@@ -1,0 +1,23 @@
+{
+  "name": "@tactico/transfer-engine",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src/",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@tactico/database": "workspace:*",
+    "@tactico/shared": "workspace:*",
+    "@tactico/finance-engine": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "eslint": "^8.57.0",
+    "vitest": "^1.3.0"
+  }
+}
