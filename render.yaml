@@ -1,0 +1,50 @@
+services:
+  # Web Application (Next.js)
+  - type: web
+    name: tactico-web
+    env: node
+    region: oregon
+    plan: starter
+    buildCommand: cd apps/web && npm install && npm run build
+    startCommand: cd apps/web && npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: tactico-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tactico-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+
+  # API Service (Next.js API Routes)
+  - type: web
+    name: tactico-api
+    env: node
+    region: oregon
+    plan: starter
+    buildCommand: cd apps/api && npm install && npm run build
+    startCommand: cd apps/api && npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tactico-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+
+databases:
+  - name: tactico-db
+    databaseName: tactico
+    user: tactico_user
+    plan: starter
+    region: oregon
