@@ -1,203 +1,530 @@
--- Enable foreign keys
+-- TACTICO Database Schema
+-- Complete Football Universe Model
+-- Version: 1.0.0
+-- Last Updated: June 7, 2026
+
 PRAGMA foreign_keys = ON;
 
--- Users table
+-- ============================================
+-- CORE TABLES
+-- ============================================
+
+-- World State (singleton)
+CREATE TABLE IF NOT EXISTS world_state (
+  id INTEGER PRIMARY KEY DEFAULT 1,
+  current_date TEXT NOT NULL DEFAULT '2026-06-07',
+  current_time TEXT NOT NULL DEFAULT '2026-06-07T00:00:00',
+  current_season INTEGER NOT NULL DEFAULT 2026,
+  current_week INTEGER NOT NULL DEFAULT 25,
+  current_day INTEGER NOT NULL DEFAULT 168,
+  transfer_window_open BOOLEAN NOT NULL DEFAULT 1,
+  youth_intake_day INTEGER NOT NULL DEFAULT 1,
+  last_tick TEXT NOT NULL DEFAULT (datetime('now')),
+  last_tick_type TEXT NOT NULL DEFAULT 'day'
+);
+
+-- ============================================
+-- GEOGRAPHY TABLES
+-- ============================================
+
+-- Continents
+CREATE TABLE IF NOT EXISTS continents (
+  code TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  reputation INTEGER DEFAULT 50
+);
+
+-- Nations
+CREATE TABLE IF NOT EXISTS nations (
+  code TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  continent_code TEXT NOT NULL,
+  -- Youth development ratings (1-100)
+  youth_quality INTEGER DEFAULT 50,
+  infrastructure INTEGER DEFAULT 50,
+  coaching_level INTEGER DEFAULT 50,
+  financial_strength INTEGER DEFAULT 50,
+  football_culture INTEGER DEFAULT 50,
+  -- Reputation (1-100)
+  reputation INTEGER DEFAULT 50,
+  -- Population and GDP (for economic calculations)
+  population INTEGER DEFAULT 1000000,
+  gdp INTEGER DEFAULT 1000000000,
+  -- Football governing body
+  governing_body TEXT,
+  -- FIFA ranking
+  fifa_ranking INTEGER DEFAULT 100,
+  -- Foreign keys
+  FOREIGN KEY (continent_code) REFERENCES continents(code)
+);
+
+-- Cities
+CREATE TABLE IF NOT EXISTS cities (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  nation_code TEXT NOT NULL,
+  population INTEGER DEFAULT 100000,
+  latitude REAL,
+  longitude REAL,
+  FOREIGN KEY (nation_code) REFERENCES nations(code)
+);
+
+-- ============================================
+-- COMPETITION TABLES
+-- ============================================
+
+-- Competition Types
+CREATE TABLE IF NOT EXISTS competition_types (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT
+);
+
+-- Competitions (Leagues, Cups, etc.)
+CREATE TABLE IF NOT EXISTS competitions (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  nation_code TEXT,
+  type_id INTEGER NOT NULL,
+  tier INTEGER NOT NULL DEFAULT 1,
+  reputation INTEGER DEFAULT 50,
+  financial_strength INTEGER DEFAULT 50,
+  competitiveness INTEGER DEFAULT 50,
+  -- Prize money (in USD)
+  prize_money_champion INTEGER DEFAULT 1000000,
+  prize_money_second INTEGER DEFAULT 500000,
+  prize_money_third INTEGER DEFAULT 250000,
+  prize_money_fourth INTEGER DEFAULT 100000,
+  -- TV revenue distribution
+  tv_revenue_champion INTEGER DEFAULT 20,
+  tv_revenue_second INTEGER DEFAULT 15,
+  tv_revenue_third INTEGER DEFAULT 10,
+  tv_revenue_fourth INTEGER DEFAULT 5,
+  tv_revenue_others INTEGER DEFAULT 50,
+  -- Promotion/Relegation
+  promotion_spots INTEGER DEFAULT 3,
+  relegation_spots INTEGER DEFAULT 3,
+  playoff_spots INTEGER DEFAULT 2,
+  -- Format
+  format TEXT NOT NULL DEFAULT 'league',
+  -- Season info
+  current_season INTEGER DEFAULT 2026,
+  -- Foreign keys
+  FOREIGN KEY (nation_code) REFERENCES nations(code),
+  FOREIGN KEY (type_id) REFERENCES competition_types(id)
+);
+
+-- Competition Seasons
+CREATE TABLE IF NOT EXISTS competition_seasons (
+  id INTEGER PRIMARY KEY,
+  competition_id INTEGER NOT NULL,
+  season INTEGER NOT NULL,
+  start_date TEXT NOT NULL,
+  end_date TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT 0,
+  -- Foreign keys
+  FOREIGN KEY (competition_id) REFERENCES competitions(id),
+  UNIQUE (competition_id, season)
+);
+
+-- ============================================
+-- CLUB TABLES
+-- ============================================
+
+-- Clubs
+CREATE TABLE IF NOT EXISTS clubs (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  short_name TEXT,
+  nation_code TEXT NOT NULL,
+  city_id INTEGER,
+  founded_year INTEGER,
+  -- Finances (in USD)
+  balance INTEGER DEFAULT 10000000,
+  wage_budget INTEGER DEFAULT 1000000,
+  transfer_budget INTEGER DEFAULT 5000000,
+  -- Facilities (1-5)
+  training_facilities INTEGER DEFAULT 1,
+  youth_academy INTEGER DEFAULT 1,
+  stadium_capacity INTEGER DEFAULT 20000,
+  medical_center INTEGER DEFAULT 1,
+  scouting_network INTEGER DEFAULT 1,
+  -- Quality ratings (1-100)
+  reputation INTEGER DEFAULT 50,
+  tactical_culture INTEGER DEFAULT 50,
+  youth_quality INTEGER DEFAULT 50,
+  scouting_quality INTEGER DEFAULT 50,
+  -- Ownership
+  ownership_type TEXT NOT NULL DEFAULT 'private',
+  owner_name TEXT,
+  -- Tactical preferences
+  preferred_formation TEXT DEFAULT '4-4-2',
+  -- Colors
+  home_kit_color TEXT DEFAULT '#00FF00',
+  away_kit_color TEXT DEFAULT '#FFFFFF',
+  third_kit_color TEXT,
+  -- Stadium
+  stadium_name TEXT DEFAULT 'Stadium',
+  stadium_address TEXT,
+  -- History
+  founded_date TEXT,
+  -- Social media
+  website TEXT,
+  twitter TEXT,
+  facebook TEXT,
+  instagram TEXT,
+  -- Foreign keys
+  FOREIGN KEY (nation_code) REFERENCES nations(code),
+  FOREIGN KEY (city_id) REFERENCES cities(id)
+);
+
+-- Club Ownership History
+CREATE TABLE IF NOT EXISTS club_ownership_history (
+  id INTEGER PRIMARY KEY,
+  club_id INTEGER NOT NULL,
+  owner_name TEXT NOT NULL,
+  ownership_type TEXT NOT NULL,
+  start_date TEXT NOT NULL,
+  end_date TEXT,
+  investment_amount INTEGER,
+  FOREIGN KEY (club_id) REFERENCES clubs(id)
+);
+
+-- ============================================
+-- PERSON TABLES
+-- ============================================
+
+-- People (base table for players, managers, staff)
+CREATE TABLE IF NOT EXISTS people (
+  id INTEGER PRIMARY KEY,
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  common_name TEXT,
+  date_of_birth TEXT,
+  nation_code TEXT,
+  city_id INTEGER,
+  height INTEGER,
+  weight INTEGER,
+  foot TEXT DEFAULT 'right',
+  -- Appearance
+  skin_tone TEXT,
+  hair_color TEXT,
+  hair_style TEXT,
+  facial_hair TEXT,
+  build TEXT
+);
+
+-- Players
+CREATE TABLE IF NOT EXISTS players (
+  id INTEGER PRIMARY KEY,
+  person_id INTEGER NOT NULL,
+  -- Position
+  position TEXT NOT NULL,
+  -- Club info
+  club_id INTEGER,
+  squad_number INTEGER,
+  -- Technical attributes (1-100)
+  passing INTEGER DEFAULT 50,
+  shooting INTEGER DEFAULT 50,
+  dribbling INTEGER DEFAULT 50,
+  ball_control INTEGER DEFAULT 50,
+  first_touch INTEGER DEFAULT 50,
+  heading INTEGER DEFAULT 50,
+  crossing INTEGER DEFAULT 50,
+  finishing INTEGER DEFAULT 50,
+  long_shots INTEGER DEFAULT 50,
+  set_pieces INTEGER DEFAULT 50,
+  penalty_taking INTEGER DEFAULT 50,
+  -- Physical attributes (1-100)
+  pace INTEGER DEFAULT 50,
+  acceleration INTEGER DEFAULT 50,
+  agility INTEGER DEFAULT 50,
+  balance INTEGER DEFAULT 50,
+  strength INTEGER DEFAULT 50,
+  stamina INTEGER DEFAULT 50,
+  jumping_reach INTEGER DEFAULT 50,
+  natural_fitness INTEGER DEFAULT 50,
+  -- Mental attributes (1-100)
+  aggression INTEGER DEFAULT 50,
+  anticipation INTEGER DEFAULT 50,
+  composure INTEGER DEFAULT 50,
+  concentration INTEGER DEFAULT 50,
+  creativity INTEGER DEFAULT 50,
+  decisions INTEGER DEFAULT 50,
+  determination INTEGER DEFAULT 50,
+  flair INTEGER DEFAULT 50,
+  leadership INTEGER DEFAULT 50,
+  off_the_ball INTEGER DEFAULT 50,
+  positioning INTEGER DEFAULT 50,
+  teamwork INTEGER DEFAULT 50,
+  vision INTEGER DEFAULT 50,
+  work_rate INTEGER DEFAULT 50,
+  -- Hidden attributes (1-100)
+  professionalism INTEGER DEFAULT 50,
+  consistency INTEGER DEFAULT 50,
+  pressure_handling INTEGER DEFAULT 50,
+  adaptability INTEGER DEFAULT 50,
+  sportsmanship INTEGER DEFAULT 50,
+  injury_proneness INTEGER DEFAULT 50,
+  controversy INTEGER DEFAULT 50,
+  loyalty INTEGER DEFAULT 50,
+  ambition INTEGER DEFAULT 50,
+  hidden_potential INTEGER DEFAULT 50,
+  -- Dynamic stats
+  current_ability INTEGER DEFAULT 50,
+  potential_ability INTEGER DEFAULT 50,
+  reputation INTEGER DEFAULT 50,
+  market_value INTEGER DEFAULT 1000000,
+  wage INTEGER DEFAULT 100000,
+  morale INTEGER DEFAULT 50,
+  fatigue INTEGER DEFAULT 0,
+  sharpness INTEGER DEFAULT 50,
+  -- Foreign keys
+  FOREIGN KEY (person_id) REFERENCES people(id),
+  FOREIGN KEY (club_id) REFERENCES clubs(id)
+);
+
+-- Player Contracts
+CREATE TABLE IF NOT EXISTS player_contracts (
+  id INTEGER PRIMARY KEY,
+  player_id INTEGER NOT NULL,
+  club_id INTEGER NOT NULL,
+  type TEXT NOT NULL DEFAULT 'full_time',
+  start_date TEXT NOT NULL,
+  expiry_date TEXT NOT NULL,
+  wage INTEGER NOT NULL DEFAULT 100000,
+  signing_bonus INTEGER DEFAULT 0,
+  release_clause INTEGER,
+  loan_club_id INTEGER,
+  loan_expiry_date TEXT,
+  -- Foreign keys
+  FOREIGN KEY (player_id) REFERENCES players(id),
+  FOREIGN KEY (club_id) REFERENCES clubs(id),
+  FOREIGN KEY (loan_club_id) REFERENCES clubs(id)
+);
+
+-- ============================================
+-- MATCH TABLES
+-- ============================================
+
+-- Matches
+CREATE TABLE IF NOT EXISTS matches (
+  id INTEGER PRIMARY KEY,
+  competition_id INTEGER NOT NULL,
+  season INTEGER NOT NULL,
+  home_club_id INTEGER NOT NULL,
+  away_club_id INTEGER NOT NULL,
+  home_club_formation TEXT DEFAULT '4-4-2',
+  away_club_formation TEXT DEFAULT '4-4-2',
+  venue_id INTEGER,
+  weather TEXT DEFAULT 'clear',
+  attendance INTEGER DEFAULT 0,
+  home_score INTEGER DEFAULT 0,
+  away_score INTEGER DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'scheduled',
+  match_date TEXT NOT NULL,
+  kickoff_time TEXT,
+  referee_id INTEGER,
+  -- Foreign keys
+  FOREIGN KEY (competition_id) REFERENCES competitions(id),
+  FOREIGN KEY (home_club_id) REFERENCES clubs(id),
+  FOREIGN KEY (away_club_id) REFERENCES clubs(id),
+  FOREIGN KEY (venue_id) REFERENCES cities(id),
+  FOREIGN KEY (referee_id) REFERENCES people(id)
+);
+
+-- Match Lineups
+CREATE TABLE IF NOT EXISTS match_lineups (
+  id INTEGER PRIMARY KEY,
+  match_id INTEGER NOT NULL,
+  club_id INTEGER NOT NULL,
+  player_id INTEGER NOT NULL,
+  position TEXT NOT NULL,
+  shirt_number INTEGER,
+  is_starter BOOLEAN NOT NULL DEFAULT 1,
+  minutes_played INTEGER DEFAULT 0,
+  -- Foreign keys
+  FOREIGN KEY (match_id) REFERENCES matches(id),
+  FOREIGN KEY (club_id) REFERENCES clubs(id),
+  FOREIGN KEY (player_id) REFERENCES players(id)
+);
+
+-- Match Events
+CREATE TABLE IF NOT EXISTS match_events (
+  id INTEGER PRIMARY KEY,
+  match_id INTEGER NOT NULL,
+  type TEXT NOT NULL,
+  minute INTEGER NOT NULL,
+  second INTEGER DEFAULT 0,
+  player_id INTEGER,
+  club_id INTEGER,
+  description TEXT,
+  x REAL,
+  y REAL,
+  details JSON,
+  -- Foreign keys
+  FOREIGN KEY (match_id) REFERENCES matches(id),
+  FOREIGN KEY (player_id) REFERENCES players(id),
+  FOREIGN KEY (club_id) REFERENCES clubs(id)
+);
+
+-- ============================================
+-- USER TABLES
+-- ============================================
+
+-- Users
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   name TEXT,
   email TEXT UNIQUE NOT NULL,
   password TEXT,
   created_at TEXT DEFAULT (datetime('now')),
-  last_login TEXT
+  last_login TEXT,
+  email_verified BOOLEAN DEFAULT 0,
+  image TEXT
 );
 
--- Leagues table
-CREATE TABLE IF NOT EXISTS leagues (
-  id INTEGER PRIMARY KEY,
-  name TEXT NOT NULL,
-  country TEXT NOT NULL,
-  tier INTEGER NOT NULL,
-  reputation INTEGER DEFAULT 50,
-  CHECK (tier >= 1 AND tier <= 5),
-  CHECK (reputation >= 0 AND reputation <= 100)
-);
-
--- Clubs table
-CREATE TABLE IF NOT EXISTS clubs (
-  id INTEGER PRIMARY KEY,
-  name TEXT NOT NULL,
-  country TEXT NOT NULL,
-  league_id INTEGER NOT NULL,
-  reputation INTEGER DEFAULT 50,
-  finances INTEGER DEFAULT 1000000,
-  stadium_capacity INTEGER DEFAULT 20000,
-  training_facilities INTEGER DEFAULT 1,
-  youth_academy INTEGER DEFAULT 1,
-  home_kit_color TEXT DEFAULT '#00FF00',
-  away_kit_color TEXT DEFAULT '#FFFFFF',
-  CHECK (reputation >= 0 AND reputation <= 100),
-  CHECK (finances >= 0),
-  CHECK (stadium_capacity > 0),
-  CHECK (training_facilities >= 1 AND training_facilities <= 5),
-  CHECK (youth_academy >= 1 AND youth_academy <= 5)
-);
-
--- Players table
-CREATE TABLE IF NOT EXISTS players (
-  id INTEGER PRIMARY KEY,
-  first_name TEXT NOT NULL,
-  last_name TEXT NOT NULL,
-  age INTEGER NOT NULL,
-  club_id INTEGER,
-  position TEXT NOT NULL,
-  overall_rating INTEGER DEFAULT 50,
-  potential_rating INTEGER DEFAULT 50,
-  attributes JSON DEFAULT '{"pace": 50, "shooting": 50, "passing": 50, "dribbling": 50, "defending": 50, "physicality": 50}',
-  traits JSON DEFAULT '{"weakFoot": false, "flair": false, "leadership": false, "professionalism": false}',
-  contract_expiry TEXT,
-  wage INTEGER DEFAULT 1000,
-  morale INTEGER DEFAULT 50,
-  stamina INTEGER DEFAULT 100,
-  injury_status TEXT DEFAULT 'fit',
-  injury_duration INTEGER DEFAULT 0,
-  FOREIGN KEY (club_id) REFERENCES clubs(id) ON DELETE SET NULL,
-  CHECK (age >= 16 AND age <= 45),
-  CHECK (overall_rating >= 0 AND overall_rating <= 100),
-  CHECK (potential_rating >= 0 AND potential_rating <= 100),
-  CHECK (morale >= 0 AND morale <= 100),
-  CHECK (stamina >= 0 AND stamina <= 100),
-  CHECK (injury_status IN ('fit', 'injured', 'suspended')),
-  CHECK (injury_duration >= 0)
-);
-
--- Matches table
-CREATE TABLE IF NOT EXISTS matches (
-  id INTEGER PRIMARY KEY,
-  home_club_id INTEGER NOT NULL,
-  away_club_id INTEGER NOT NULL,
-  competition TEXT NOT NULL,
-  match_date TEXT NOT NULL,
-  status TEXT DEFAULT 'scheduled',
-  home_score INTEGER DEFAULT 0,
-  away_score INTEGER DEFAULT 0,
-  weather TEXT DEFAULT 'clear',
-  FOREIGN KEY (home_club_id) REFERENCES clubs(id),
-  FOREIGN KEY (away_club_id) REFERENCES clubs(id),
-  CHECK (status IN ('scheduled', 'in_progress', 'completed')),
-  CHECK (weather IN ('clear', 'rain', 'snow', 'windy')),
-  CHECK (home_score >= 0),
-  CHECK (away_score >= 0)
-);
-
--- User Careers table
-CREATE TABLE IF NOT EXISTS careers (
-  id INTEGER PRIMARY KEY,
+-- User Sessions
+CREATE TABLE IF NOT EXISTS user_sessions (
+  id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
-  club_id INTEGER NOT NULL,
-  start_date TEXT DEFAULT (datetime('now')),
-  end_date TEXT,
-  reputation INTEGER DEFAULT 50,
-  achievements JSON DEFAULT '[]',
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (club_id) REFERENCES clubs(id),
-  CHECK (reputation >= 0 AND reputation <= 100)
+  expires_at TEXT NOT NULL,
+  -- Foreign keys
+  FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
--- Transfers table
-CREATE TABLE IF NOT EXISTS transfers (
-  id INTEGER PRIMARY KEY,
-  player_id INTEGER NOT NULL,
-  from_club_id INTEGER NOT NULL,
-  to_club_id INTEGER NOT NULL,
-  transfer_date TEXT DEFAULT (datetime('now')),
-  fee INTEGER DEFAULT 0,
-  wage INTEGER DEFAULT 0,
-  status TEXT DEFAULT 'pending',
-  FOREIGN KEY (player_id) REFERENCES players(id),
-  FOREIGN KEY (from_club_id) REFERENCES clubs(id),
-  FOREIGN KEY (to_club_id) REFERENCES clubs(id),
-  CHECK (fee >= 0),
-  CHECK (wage >= 0),
-  CHECK (status IN ('pending', 'completed', 'rejected'))
-);
-
--- Match Events table
-CREATE TABLE IF NOT EXISTS match_events (
-  id INTEGER PRIMARY KEY,
-  match_id INTEGER NOT NULL,
-  player_id INTEGER,
-  club_id INTEGER NOT NULL,
-  event_type TEXT NOT NULL,
-  minute INTEGER NOT NULL,
-  FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE,
-  FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE SET NULL,
-  FOREIGN KEY (club_id) REFERENCES clubs(id),
-  CHECK (event_type IN ('goal', 'assist', 'yellow_card', 'red_card', 'substitution')),
-  CHECK (minute >= 0 AND minute <= 120)
-);
-
--- Tactics table
-CREATE TABLE IF NOT EXISTS tactics (
-  id INTEGER PRIMARY KEY,
+-- User Accounts (for OAuth)
+CREATE TABLE IF NOT EXISTS user_accounts (
+  id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
-  club_id INTEGER NOT NULL,
-  formation TEXT DEFAULT '4-4-2',
-  instructions JSON DEFAULT '{"pressingIntensity": "medium", "passingStyle": "mixed", "defensiveLine": "medium"}',
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (club_id) REFERENCES clubs(id),
-  CHECK (formation IN ('4-4-2', '4-3-3', '3-5-2', '4-2-3-1', '5-3-2'))
+  provider_type TEXT NOT NULL,
+  provider_id TEXT NOT NULL,
+  provider_account_id TEXT NOT NULL,
+  refresh_token TEXT,
+  access_token TEXT,
+  expires_at TEXT,
+  token_type TEXT,
+  scope TEXT,
+  id_token TEXT,
+  session_state TEXT,
+  -- Foreign keys
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  UNIQUE (provider_id, provider_account_id)
 );
 
--- Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_players_club_id ON players(club_id);
-CREATE INDEX IF NOT EXISTS idx_matches_home_club_id ON matches(home_club_id);
-CREATE INDEX IF NOT EXISTS idx_matches_away_club_id ON matches(away_club_id);
+-- User Verification Tokens
+CREATE TABLE IF NOT EXISTS user_verification_tokens (
+  identifier TEXT NOT NULL,
+  token TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  PRIMARY KEY (identifier, token)
+);
+
+-- ============================================
+-- INDEXES
+-- ============================================
+
+-- World State
+CREATE INDEX IF NOT EXISTS idx_world_state_current_date ON world_state(current_date);
+
+-- Nations
+CREATE INDEX IF NOT EXISTS idx_nations_code ON nations(code);
+CREATE INDEX IF NOT EXISTS idx_nations_continent ON nations(continent_code);
+CREATE INDEX IF NOT EXISTS idx_nations_reputation ON nations(reputation);
+
+-- Cities
+CREATE INDEX IF NOT EXISTS idx_cities_nation ON cities(nation_code);
+
+-- Competitions
+CREATE INDEX IF NOT EXISTS idx_competitions_nation ON competitions(nation_code);
+CREATE INDEX IF NOT EXISTS idx_competitions_type ON competitions(type_id);
+
+-- Clubs
+CREATE INDEX IF NOT EXISTS idx_clubs_nation ON clubs(nation_code);
+CREATE INDEX IF NOT EXISTS idx_clubs_reputation ON clubs(reputation);
+
+-- People
+CREATE INDEX IF NOT EXISTS idx_people_nation ON people(nation_code);
+
+-- Players
+CREATE INDEX IF NOT EXISTS idx_players_club ON players(club_id);
+CREATE INDEX IF NOT EXISTS idx_players_position ON players(position);
+
+-- Matches
+CREATE INDEX IF NOT EXISTS idx_matches_competition ON matches(competition_id);
+CREATE INDEX IF NOT EXISTS idx_matches_date ON matches(match_date);
 CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status);
-CREATE INDEX IF NOT EXISTS idx_careers_user_id ON careers(user_id);
-CREATE INDEX IF NOT EXISTS idx_careers_club_id ON careers(club_id);
-CREATE INDEX IF NOT EXISTS idx_transfers_player_id ON transfers(player_id);
-CREATE INDEX IF NOT EXISTS idx_transfers_from_club_id ON transfers(from_club_id);
-CREATE INDEX IF NOT EXISTS idx_transfers_to_club_id ON transfers(to_club_id);
-CREATE INDEX IF NOT EXISTS idx_match_events_match_id ON match_events(match_id);
-CREATE INDEX IF NOT EXISTS idx_match_events_player_id ON match_events(player_id);
-CREATE INDEX IF NOT EXISTS idx_tactics_user_id ON tactics(user_id);
-CREATE INDEX IF NOT EXISTS idx_tactics_club_id ON tactics(club_id);
 
--- Sample data for testing
-INSERT INTO leagues (id, name, country, tier) VALUES
-  (1, 'Premier League', 'England', 1),
-  (2, 'Championship', 'England', 2),
-  (3, 'League One', 'England', 3),
-  (4, 'La Liga', 'Spain', 1),
-  (5, 'Serie A', 'Italy', 1);
+-- Match Events
+CREATE INDEX IF NOT EXISTS idx_match_events_match ON match_events(match_id);
+CREATE INDEX IF NOT EXISTS idx_match_events_type ON match_events(type);
 
-INSERT INTO clubs (id, name, country, league_id, reputation, finances, stadium_capacity, training_facilities, youth_academy) VALUES
-  (1, 'Manchester United', 'England', 1, 90, 50000000, 74140, 5, 5),
-  (2, 'Manchester City', 'England', 1, 95, 100000000, 53400, 5, 5),
-  (3, 'Liverpool', 'England', 1, 88, 80000000, 53287, 5, 5),
-  (4, 'Arsenal', 'England', 1, 85, 70000000, 60260, 5, 5),
-  (5, 'Chelsea', 'England', 1, 82, 90000000, 40343, 5, 5),
-  (6, 'Real Madrid', 'Spain', 4, 98, 150000000, 81044, 5, 5),
-  (7, 'Barcelona', 'Spain', 4, 97, 140000000, 99354, 5, 5),
-  (8, 'Juventus', 'Italy', 5, 87, 60000000, 41507, 5, 5),
-  (9, 'AC Milan', 'Italy', 5, 84, 55000000, 75817, 5, 5),
-  (10, 'Leeds United', 'England', 2, 60, 20000000, 37890, 3, 3);
+-- Users
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
-INSERT INTO players (id, first_name, last_name, age, club_id, position, overall_rating, potential_rating, wage, morale) VALUES
-  (1, 'Cristiano', 'Ronaldo', 39, 6, 'ST', 90, 92, 500000, 95),
-  (2, 'Lionel', 'Messi', 36, 7, 'RW', 91, 93, 450000, 90),
-  (3, 'Kevin', 'De Bruyne', 32, 2, 'CAM', 92, 94, 400000, 85),
-  (4, 'Mohamed', 'Salah', 31, 3, 'RW', 90, 91, 350000, 88),
-  (5, 'Virgil', 'van Dijk', 32, 3, 'CB', 89, 90, 300000, 90),
-  (6, 'Erling', 'Haaland', 23, 2, 'ST', 91, 95, 380000, 92),
-  (7, 'Bruno', 'Fernandes', 29, 1, 'CAM', 88, 89, 280000, 87),
-  (8, 'Thiago', 'Alcantara', 32, 3, 'CM', 87, 88, 250000, 85),
-  (9, 'Harry', 'Kane', 30, 5, 'ST', 89, 90, 320000, 88),
-  (10, 'Kylian', 'Mbappe', 24, 4, 'ST', 92, 96, 420000, 94);
+-- ============================================
+-- SAMPLE DATA
+-- ============================================
 
-INSERT INTO matches (id, home_club_id, away_club_id, competition, match_date, status, home_score, away_score, weather) VALUES
-  (1, 1, 2, 'Premier League', '2026-06-15 15:00:00', 'scheduled', 0, 0, 'clear'),
-  (2, 3, 4, 'Premier League', '2026-06-16 12:30:00', 'scheduled', 0, 0, 'rain'),
-  (3, 5, 6, 'Champions League', '2026-06-17 20:00:00', 'scheduled', 0, 0, 'clear'),
-  (4, 7, 8, 'La Liga', '2026-06-18 15:00:00', 'scheduled', 0, 0, 'clear'),
-  (5, 9, 10, 'Serie A', '2026-06-19 18:00:00', 'scheduled', 0, 0, 'clear');
+-- Insert sample continents
+INSERT OR IGNORE INTO continents (code, name, reputation) VALUES
+  ('AF', 'Africa', 50),
+  ('AS', 'Asia', 60),
+  ('EU', 'Europe', 80),
+  ('NA', 'North America', 55),
+  ('OC', 'Oceania', 40),
+  ('SA', 'South America', 70);
+
+-- Insert sample nations
+INSERT OR IGNORE INTO nations (code, name, continent_code, youth_quality, infrastructure, coaching_level, financial_strength, football_culture, reputation, population, gdp) VALUES
+  ('NG', 'Nigeria', 'AF', 75, 40, 65, 50, 85, 60, 200000000, 500000000000),
+  ('ENG', 'England', 'EU', 90, 95, 95, 95, 95, 95, 55000000, 3000000000000),
+  ('ESP', 'Spain', 'EU', 88, 92, 93, 90, 92, 92, 47000000, 1500000000000),
+  ('DEU', 'Germany', 'EU', 85, 90, 90, 92, 90, 90, 83000000, 4000000000000),
+  ('FRA', 'France', 'EU', 87, 88, 90, 88, 88, 88, 67000000, 2800000000000),
+  ('ITA', 'Italy', 'EU', 84, 85, 88, 85, 88, 85, 60000000, 2000000000000),
+  ('BRA', 'Brazil', 'SA', 95, 70, 90, 60, 95, 90, 213000000, 2000000000000),
+  ('ARG', 'Argentina', 'SA', 92, 75, 88, 65, 93, 88, 45000000, 500000000000);
+
+-- Insert sample competition types
+INSERT OR IGNORE INTO competition_types (id, name, description) VALUES
+  (1, 'League', 'Domestic league competition'),
+  (2, 'Domestic Cup', 'National cup competition'),
+  (3, 'Continental', 'Continental club competition');
+
+-- Insert sample competitions
+INSERT OR IGNORE INTO competitions (id, name, nation_code, type_id, tier, reputation, financial_strength, competitiveness, prize_money_champion, format) VALUES
+  (1, 'Premier League', 'ENG', 1, 1, 95, 95, 95, 200000000, 'league'),
+  (2, 'Championship', 'ENG', 1, 2, 70, 70, 70, 10000000, 'league'),
+  (3, 'La Liga', 'ESP', 1, 1, 92, 90, 90, 180000000, 'league'),
+  (4, 'Champions League', 'EU', 3, 1, 100, 100, 100, 200000000, 'group_and_knockout');
+
+-- Insert sample clubs
+INSERT OR IGNORE INTO clubs (id, name, short_name, nation_code, founded_year, balance, wage_budget, transfer_budget, training_facilities, youth_academy, stadium_capacity, reputation, stadium_name) VALUES
+  (1, 'Manchester City', 'Man City', 'ENG', 1880, 500000000, 5000000, 100000000, 5, 5, 53400, 95, 'Etihad Stadium'),
+  (2, 'Real Madrid', 'Real Madrid', 'ESP', 1902, 400000000, 4000000, 150000000, 5, 5, 81044, 98, 'Santiago Bernabéu'),
+  (3, 'Liverpool', 'Liverpool', 'ENG', 1892, 300000000, 3000000, 80000000, 5, 5, 53287, 88, 'Anfield'),
+  (4, 'Barcelona', 'Barça', 'ESP', 1899, 350000000, 3500000, 140000000, 5, 5, 99354, 97, 'Camp Nou'),
+  (5, 'Manchester United', 'Man Utd', 'ENG', 1878, 250000000, 2500000, 50000000, 5, 5, 74140, 90, 'Old Trafford');
+
+-- Insert sample people
+INSERT OR IGNORE INTO people (id, first_name, last_name, nation_code, height, weight) VALUES
+  (1, 'Erling', 'Haaland', 'NOR', 194, 88),
+  (2, 'Kevin', 'De Bruyne', 'BEL', 181, 70),
+  (3, 'Rodri', 'Hernandez', 'ESP', 191, 80),
+  (4, 'Jude', 'Bellingham', 'ENG', 185, 75),
+  (5, 'Vinicius', 'Junior', 'BRA', 176, 69);
+
+-- Insert sample players
+INSERT OR IGNORE INTO players (id, person_id, position, club_id, squad_number, current_ability, potential_ability, wage) VALUES
+  (1, 1, 'ST', 1, 9, 91, 95, 380000),
+  (2, 2, 'CAM', 1, 8, 92, 94, 400000),
+  (3, 3, 'CDM', 1, 16, 89, 91, 300000),
+  (4, 4, 'CM', 2, 5, 90, 94, 450000),
+  (5, 5, 'LW', 2, 20, 88, 92, 350000);
+
+-- Insert sample matches
+INSERT OR IGNORE INTO matches (id, competition_id, season, home_club_id, away_club_id, match_date, status) VALUES
+  (1, 1, 2026, 1, 2, '2026-06-15', 'scheduled'),
+  (2, 1, 2026, 3, 4, '2026-06-16', 'scheduled'),
+  (3, 4, 2026, 1, 2, '2026-06-17', 'scheduled');
