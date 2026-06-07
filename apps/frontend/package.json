@@ -1,0 +1,35 @@
+# TACTICO Frontend
+
+This is the frontend application for TACTICO, built with Next.js 14, PixiJS, and Matter.js.
+
+## 📦 Dependencies
+
+- Next.js 14
+- React 18
+- PixiJS (for 2D rendering)
+- Matter.js (for physics)
+- Tailwind CSS (for styling)
+- shadcn/ui (for UI components)
+- Zustand (for state management)
+- Howler.js (for audio)
+
+## 🚀 Scripts
+
+- `dev`: Start the development server.
+- `build`: Build the application for production.
+- `lint`: Run ESLint.
+
+## 📁 Structure
+
+```
+apps/frontend/
+├── src/
+│   ├── app/           # Next.js App Router
+│   ├── components/    # React components
+│   ├── lib/           # Utilities and hooks
+│   ├── styles/        # Global styles
+│   └── types/         # TypeScript types
+├── next.config.js
+├── tailwind.config.js
+└── tsconfig.json
+```
