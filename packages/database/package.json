@@ -1,0 +1,13 @@
+{
+  "name": "tactico-database",
+  "version": "0.1.0",
+  "description": "Turso database schema and migrations for TACTICO",
+  "main": "index.js",
+  "scripts": {},
+  "dependencies": {
+    "@libsql/client": "^0.4.0"
+  },
+  "devDependencies": {
+    "@libsql/cli": "^0.4.0"
+  }
+}
