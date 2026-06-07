@@ -1,0 +1,25 @@
+{
+  "name": "tactico-backend",
+  "version": "0.1.0",
+  "description": "Backend API for TACTICO",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^14.0.0",
+    "@types/node": "^20.0.0",
+    "socket.io": "^4.7.0",
+    "cors": "^2.8.5",
+    "@libsql/client": "^0.4.0",
+    "next-auth": "^5.0.0-beta.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/cors": "^2.8.17",
+    "@types/next-auth": "^5.0.0"
+  }
+}
