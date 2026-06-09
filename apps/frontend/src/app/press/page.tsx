@@ -1,549 +1,201 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { clubs } from "@/types/club";
 import { Club } from "@/types/club";
-import { matches } from "@/types/match";
 
-// Press conference questions
-export interface PressQuestion {
+interface PressQuestion {
   id: number;
   question: string;
-  options: PressOption[];
+  options: { text: string; effects: { morale: number; fanSentiment: number; opponentBoost?: number; description: string } }[];
 }
 
-export interface PressOption {
-  text: string;
-  effects: {
-    morale: number; // -10 to +10
-    fanSentiment: number; // -10 to +10
-    opponentBoost?: number; // Optional: affects opponent's morale
-    description: string;
-  };
-}
-
-// Static press conference questions
 const pressQuestions: PressQuestion[] = [
   {
-    id: 1,
-    question: "How do you feel about your team's chances in tomorrow's match?",
+    id: 1, question: "How do you feel about your team's chances in tomorrow's match?",
     options: [
-      {
-        text: "We're fully prepared and will win.",
-        effects: {
-          morale: +5,
-          fanSentiment: +5,
-          description: "Boosts team confidence and fan excitement.",
-        },
-      },
-      {
-        text: "It will be a tough match, but we're ready.",
-        effects: {
-          morale: +2,
-          fanSentiment: +3,
-          description: "Balanced response, slight boost to morale.",
-        },
-      },
-      {
-        text: "We're the underdogs, but we'll give it our all.",
-        effects: {
-          morale: -2,
-          fanSentiment: +1,
-          opponentBoost: +3,
-          description: "Opponent may underestimate you, but fans appreciate honesty.",
-        },
-      },
-      {
-        text: "I'm not going to make any predictions.",
-        effects: {
-          morale: 0,
-          fanSentiment: -2,
-          description: "Neutral for morale, but fans prefer confidence.",
-        },
-      },
+      { text: "We're fully prepared and will win.", effects: { morale: 5, fanSentiment: 5, description: "Boosts confidence and excitement." } },
+      { text: "It will be tough, but we're ready.", effects: { morale: 2, fanSentiment: 3, description: "Balanced, slight boost." } },
+      { text: "We're the underdogs, but we'll fight.", effects: { morale: -2, fanSentiment: 1, opponentBoost: 3, description: "Honest, opponent may underestimate you." } },
+      { text: "No predictions from me.", effects: { morale: 0, fanSentiment: -2, description: "Neutral, fans want confidence." } },
     ],
   },
   {
-    id: 2,
-    question: "What's your strategy for stopping their star player?",
+    id: 2, question: "What's your strategy for stopping their star player?",
     options: [
-      {
-        text: "We have a special plan to mark him out of the game.",
-        effects: {
-          morale: +3,
-          fanSentiment: +4,
-          opponentBoost: +5,
-          description: "Opponent will be extra cautious, but your team is motivated.",
-        },
-      },
-      {
-        text: "We'll focus on our own game and not worry about individuals.",
-        effects: {
-          morale: +2,
-          fanSentiment: +2,
-          description: "Standard approach, no major effects.",
-        },
-      },
-      {
-        text: "We don't have a specific plan, we'll see how it goes.",
-        effects: {
-          morale: -3,
-          fanSentiment: -3,
-          description: "Lacks preparation, hurts confidence.",
-        },
-      },
-      {
-        text: "I'm not going to reveal our tactics.",
-        effects: {
-          morale: 0,
-          fanSentiment: -1,
-          description: "Neutral for morale, but fans want insight.",
-        },
-      },
+      { text: "We have a special plan to mark him out.", effects: { morale: 3, fanSentiment: 4, opponentBoost: 5, description: "Motivates team, opponent cautious." } },
+      { text: "Focus on our own game, not individuals.", effects: { morale: 2, fanSentiment: 2, description: "Standard approach." } },
+      { text: "No specific plan, we'll see.", effects: { morale: -3, fanSentiment: -3, description: "Lacks preparation." } },
+      { text: "Not revealing our tactics.", effects: { morale: 0, fanSentiment: -1, description: "Standard manager response." } },
     ],
   },
   {
-    id: 3,
-    question: "How do you respond to criticism of your recent performances?",
+    id: 3, question: "How do you respond to criticism of recent performances?",
     options: [
-      {
-        text: "The criticism is unfair, we've been playing well.",
-        effects: {
-          morale: +4,
-          fanSentiment: +2,
-          description: "Defends the team, boosts morale.",
-        },
-      },
-      {
-        text: "We accept the criticism and will work harder.",
-        effects: {
-          morale: +1,
-          fanSentiment: +4,
-          description: "Shows humility, fans appreciate it.",
-        },
-      },
-      {
-        text: "The critics don't understand the challenges we're facing.",
-        effects: {
-          morale: +2,
-          fanSentiment: -3,
-          description: "Defensive, may alienate fans.",
-        },
-      },
-      {
-        text: "No comment.",
-        effects: {
-          morale: 0,
-          fanSentiment: -2,
-          description: "Neutral for morale, but fans want engagement.",
-        },
-      },
+      { text: "The criticism is unfair, we've been playing well.", effects: { morale: 4, fanSentiment: 2, description: "Defends team, boosts morale." } },
+      { text: "We accept it and will work harder.", effects: { morale: 1, fanSentiment: 4, description: "Humility wins fans." } },
+      { text: "Critics don't understand our challenges.", effects: { morale: 2, fanSentiment: -3, description: "Defensive, may alienate." } },
+      { text: "No comment.", effects: { morale: 0, fanSentiment: -2, description: "Fans want engagement." } },
     ],
   },
   {
-    id: 4,
-    question: "Will you be making any changes to the starting lineup?",
+    id: 4, question: "Will you make changes to the starting lineup?",
     options: [
-      {
-        text: "Yes, we have a few surprises in store.",
-        effects: {
-          morale: +3,
-          fanSentiment: +4,
-          opponentBoost: +2,
-          description: "Creates intrigue, but opponent may prepare for changes.",
-        },
-      },
-      {
-        text: "We're sticking with the same team that's been performing well.",
-        effects: {
-          morale: +2,
-          fanSentiment: +2,
-          description: "Consistency is good for morale.",
-        },
-      },
-      {
-        text: "We're still deciding, we'll see how training goes.",
-        effects: {
-          morale: 0,
-          fanSentiment: 0,
-          description: "Neutral response, no major effects.",
-        },
-      },
-      {
-        text: "I'm not going to reveal our lineup.",
-        effects: {
-          morale: 0,
-          fanSentiment: -1,
-          description: "Standard manager response.",
-        },
-      },
+      { text: "Yes, we have a few surprises.", effects: { morale: 3, fanSentiment: 4, opponentBoost: 2, description: "Creates intrigue." } },
+      { text: "Sticking with the same team.", effects: { morale: 2, fanSentiment: 2, description: "Consistency builds morale." } },
+      { text: "Still deciding, depends on training.", effects: { morale: 0, fanSentiment: 0, description: "Neutral response." } },
+      { text: "Not revealing our lineup.", effects: { morale: 0, fanSentiment: -1, description: "Standard approach." } },
     ],
   },
   {
-    id: 5,
-    question: "What's your message to the fans ahead of this important match?",
+    id: 5, question: "What's your message to the fans?",
     options: [
-      {
-        text: "We'll give everything for the win, for you!",
-        effects: {
-          morale: +5,
-          fanSentiment: +10,
-          description: "Massive boost to fan sentiment and team morale.",
-        },
-      },
-      {
-        text: "We appreciate your support and will do our best.",
-        effects: {
-          morale: +2,
-          fanSentiment: +5,
-          description: "Positive but less impactful.",
-        },
-      },
-      {
-        text: "We need your support more than ever.",
-        effects: {
-          morale: +1,
-          fanSentiment: +3,
-          description: "Appeals for support, modest boost.",
-        },
-      },
-      {
-        text: "We'll see how it goes.",
-        effects: {
-          morale: -2,
-          fanSentiment: -5,
-          description: "Lacks passion, disappoints fans.",
-        },
-      },
+      { text: "We'll give everything for the win, for you!", effects: { morale: 5, fanSentiment: 10, description: "Massive boost all around." } },
+      { text: "We appreciate your support and will do our best.", effects: { morale: 2, fanSentiment: 5, description: "Positive but less impactful." } },
+      { text: "We need your support more than ever.", effects: { morale: 1, fanSentiment: 3, description: "Appeals for support." } },
+      { text: "We'll see how it goes.", effects: { morale: -2, fanSentiment: -5, description: "Lacks passion, disappoints." } },
     ],
   },
-];
-
-// Fan sentiment levels
-const fanSentimentLevels = [
-  { value: -100, label: "Furious" },
-  { value: -75, label: "Outraged" },
-  { value: -50, label: "Angry" },
-  { value: -25, label: "Disappointed" },
-  { value: 0, label: "Neutral" },
-  { value: 25, label: "Content" },
-  { value: 50, label: "Happy" },
-  { value: 75, label: "Excited" },
-  { value: 100, label: "Ecstatic" },
 ];
 
 export default function PressPage() {
   const [selectedClub, setSelectedClub] = useState<Club | null>(null);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedOptions, setSelectedOptions] = useState<Record<number, number>>({});
+  const [qIndex, setQIndex] = useState(0);
+  const [selected, setSelected] = useState<Record<number, number>>({});
   const [fanSentiment, setFanSentiment] = useState(50);
   const [teamMorale, setTeamMorale] = useState(75);
-  const [isCompleted, setIsCompleted] = useState(false);
+  const [done, setDone] = useState(false);
 
   useEffect(() => {
     const clubId = localStorage.getItem("selectedClubId");
-    if (clubId) {
-      const club = clubs.find((c) => c.id === parseInt(clubId));
-      setSelectedClub(club || null);
-    }
+    if (clubId) setSelectedClub(clubs.find(c => c.id === parseInt(clubId)) || null);
   }, []);
-
-  const handleOptionSelect = (questionId: number, optionIndex: number) => {
-    setSelectedOptions({ ...selectedOptions, [questionId]: optionIndex });
-  };
-
-  const getCurrentQuestion = () => {
-    return pressQuestions[currentQuestionIndex];
-  };
-
-  const getSelectedOption = () => {
-    const question = getCurrentQuestion();
-    const optionIndex = selectedOptions[question.id];
-    return optionIndex !== undefined ? question.options[optionIndex] : null;
-  };
-
-  const handleNextQuestion = () => {
-    const question = getCurrentQuestion();
-    const optionIndex = selectedOptions[question.id];
-    
-    if (optionIndex !== undefined) {
-      const option = question.options[optionIndex];
-      
-      // Apply effects
-      setFanSentiment((prev) => {
-        const newSentiment = Math.max(0, Math.min(100, prev + option.effects.fanSentiment));
-        return newSentiment;
-      });
-      
-      setTeamMorale((prev) => {
-        const newMorale = Math.max(0, Math.min(100, prev + option.effects.morale));
-        return newMorale;
-      });
-    }
-
-    if (currentQuestionIndex < pressQuestions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    } else {
-      setIsCompleted(true);
-    }
-  };
-
-  const handlePreviousQuestion = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(currentQuestionIndex - 1);
-    }
-  };
-
-  const getFanSentimentLabel = () => {
-    for (const level of fanSentimentLevels) {
-      if (fanSentiment >= level.value) {
-        return level.label;
-      }
-    }
-    return "Unknown";
-  };
-
-  const getMoraleLabel = () => {
-    if (teamMorale >= 80) return "Excellent";
-    if (teamMorale >= 60) return "Good";
-    if (teamMorale >= 40) return "Average";
-    if (teamMorale >= 20) return "Poor";
-    return "Terrible";
-  };
-
-  const resetPressConference = () => {
-    setCurrentQuestionIndex(0);
-    setSelectedOptions({});
-    setFanSentiment(50);
-    setTeamMorale(75);
-    setIsCompleted(false);
-  };
 
   if (!selectedClub) {
     return (
-      <main className="min-h-screen bg-gray-900 text-white p-8">
-        <p className="text-center">No club selected. Please select a club first.</p>
-      </main>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <p className="text-offwhite-500 text-sm">No club selected.</p>
+          <Link href="/start" className="game-btn mt-4 inline-block">Choose Club</Link>
+        </div>
+      </div>
     );
   }
 
-  if (isCompleted) {
-    return (
-      <main className="min-h-screen bg-gray-900 text-white p-8">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6">Press Conference Complete</h1>
+  const current = pressQuestions[qIndex];
+  const selectedOpt = selected[current.id] !== undefined ? current.options[selected[current.id]] : null;
 
-          <div className="bg-gray-800 rounded-lg p-6 mb-6">
-            <h2 className="text-xl font-bold mb-4">Results</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  const handleNext = () => {
+    if (selectedOpt) {
+      setFanSentiment(prev => Math.max(0, Math.min(100, prev + selectedOpt.effects.fanSentiment)));
+      setTeamMorale(prev => Math.max(0, Math.min(100, prev + selectedOpt.effects.morale)));
+    }
+    if (qIndex < pressQuestions.length - 1) setQIndex(qIndex + 1);
+    else setDone(true);
+  };
+
+  if (done) {
+    return (
+      <div className="min-h-screen p-6 animate-fade-in">
+        <div className="max-w-2xl mx-auto">
+          <h1 className="text-xl font-bold text-offwhite mb-6">Press Conference Complete</h1>
+          <div className="game-card p-6 mb-4">
+            <div className="grid grid-cols-2 gap-6">
               <div className="text-center">
-                <p className="text-sm text-gray-400 mb-1">Fan Sentiment</p>
-                <p className="text-4xl font-bold">{fanSentiment}</p>
-                <p className="text-lg">{getFanSentimentLabel()}</p>
-                <div className="w-full bg-gray-600 rounded-full h-2 mt-2">
-                  <div
-                    className="bg-pink-500 h-2 rounded-full"
-                    style={{ width: `${fanSentiment}%` }}
-                  ></div>
+                <p className="section-header">Fan Sentiment</p>
+                <span className="text-4xl font-black text-pink-400">{fanSentiment}</span>
+                <div className="h-1.5 rounded-full bg-white/5 mt-2">
+                  <div className="h-full rounded-full bg-pink-400" style={{ width: `${fanSentiment}%` }} />
                 </div>
               </div>
               <div className="text-center">
-                <p className="text-sm text-gray-400 mb-1">Team Morale</p>
-                <p className="text-4xl font-bold">{teamMorale}</p>
-                <p className="text-lg">{getMoraleLabel()}</p>
-                <div className="w-full bg-gray-600 rounded-full h-2 mt-2">
-                  <div
-                    className="bg-blue-500 h-2 rounded-full"
-                    style={{ width: `${teamMorale}%` }}
-                  ></div>
+                <p className="section-header">Team Morale</p>
+                <span className="text-4xl font-black text-blue-400">{teamMorale}</span>
+                <div className="h-1.5 rounded-full bg-white/5 mt-2">
+                  <div className="h-full rounded-full bg-blue-400" style={{ width: `${teamMorale}%` }} />
                 </div>
               </div>
             </div>
           </div>
-
-          <div className="bg-gray-800 rounded-lg p-6 mb-6">
-            <h2 className="text-xl font-bold mb-4">Summary</h2>
-            <p className="mb-4">
-              Your answers have affected the team and fans. These effects will carry over to your next match.
-            </p>
-            
+          <div className="game-card p-4">
+            <p className="section-header">Summary</p>
             <div className="space-y-2">
-              {pressQuestions.map((question, index) => {
-                const optionIndex = selectedOptions[question.id];
-                if (optionIndex !== undefined) {
-                  const option = question.options[optionIndex];
-                  return (
-                    <div
-                      key={question.id}
-                      className="bg-gray-700 rounded-lg p-3"
-                    >
-                      <p className="font-medium">{question.question}</p>
-                      <p className="text-sm text-gray-400">
-                        Your answer: {option.text}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {option.effects.description}
-                      </p>
-                    </div>
-                  );
-                }
-                return null;
+              {pressQuestions.map(q => {
+                const optIdx = selected[q.id];
+                if (optIdx === undefined) return null;
+                return (
+                  <div key={q.id} className="p-2 rounded-lg bg-white/[0.02]">
+                    <p className="text-xs font-medium text-offwhite-300">{q.question}</p>
+                    <p className="text-[10px] text-offwhite-500 mt-0.5">Your answer: {q.options[optIdx].text}</p>
+                  </div>
+                );
               })}
             </div>
           </div>
-
-          <div className="flex justify-end">
-            <button
-              onClick={() => {
-                // Save results to localStorage
-                localStorage.setItem("fanSentiment", fanSentiment.toString());
-                localStorage.setItem("teamMorale", teamMorale.toString());
-                alert("Press conference results saved! Effects will apply to your next match.");
-                resetPressConference();
-              }}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold"
-            >
-              Confirm and Save
-            </button>
-          </div>
+          <button onClick={() => { setQIndex(0); setSelected({}); setFanSentiment(50); setTeamMorale(75); setDone(false); }} className="game-btn mt-4">New Conference</button>
         </div>
-      </main>
+      </div>
     );
   }
 
-  const currentQuestion = getCurrentQuestion();
-  const selectedOption = getSelectedOption();
-
   return (
-    <main className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Press Conference</h1>
+    <div className="min-h-screen p-6 animate-fade-in">
+      <div className="max-w-3xl mx-auto">
+        <h1 className="text-xl font-bold text-offwhite mb-6">Press Conference</h1>
 
         {/* Progress */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-400">
-              Question {currentQuestionIndex + 1} of {pressQuestions.length}
-            </p>
-            <div className="w-64 bg-gray-600 rounded-full h-2">
-              <div
-                className="bg-blue-500 h-2 rounded-full"
-                style={{
-                  width: `${((currentQuestionIndex + 1) / pressQuestions.length) * 100}%`,
-                }}
-              ></div>
-            </div>
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-[10px] text-offwhite-500">Question {qIndex + 1} of {pressQuestions.length}</span>
+          <div className="w-32 h-1 rounded-full bg-white/5">
+            <div className="h-full rounded-full bg-gold" style={{ width: `${((qIndex + 1) / pressQuestions.length) * 100}%` }} />
           </div>
         </div>
 
         {/* Question */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4">{currentQuestion.question}</h2>
-          
-          <div className="space-y-3">
-            {currentQuestion.options.map((option, index) => {
-              const isSelected = selectedOptions[currentQuestion.id] === index;
+        <div className="game-card p-6 mb-4">
+          <h2 className="text-base font-semibold text-offwhite mb-4">{current.question}</h2>
+          <div className="space-y-2">
+            {current.options.map((opt, i) => {
+              const isSelected = selected[current.id] === i;
               return (
                 <button
-                  key={index}
-                  onClick={() => handleOptionSelect(currentQuestion.id, index)}
-                  className={`w-full text-left p-4 rounded-lg border-2 ${
-                    isSelected
-                      ? "border-blue-500 bg-blue-600"
-                      : "border-gray-600 hover:border-gray-500"
+                  key={i}
+                  onClick={() => setSelected({ ...selected, [current.id]: i })}
+                  className={`w-full text-left p-3 rounded-lg transition-all duration-150 ${
+                    isSelected ? "bg-gold/10 ring-1 ring-gold/30" : "bg-white/[0.03] hover:bg-white/[0.06] ring-1 ring-white/[0.04]"
                   }`}
                 >
-                  <p className="font-medium">{option.text}</p>
-                  {isSelected && selectedOption && (
-                    <p className="text-xs text-gray-300 mt-1">
-                      {selectedOption.effects.description}
-                    </p>
-                  )}
+                  <p className={`text-sm ${isSelected ? 'text-gold' : 'text-offwhite-300'}`}>{opt.text}</p>
+                  {isSelected && <p className="text-[10px] text-offwhite-500 mt-1">{opt.effects.description}</p>}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Current Effects Preview */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-          <h2 className="text-lg font-bold mb-4">Current Effects Preview</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Live Effects */}
+        <div className="game-card p-4 mb-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <div className="flex justify-between items-center mb-1">
-                <p className="text-sm">Fan Sentiment</p>
-                <p className="font-bold">{fanSentiment}</p>
-              </div>
-              <div className="w-full bg-gray-600 rounded-full h-2">
-                <div
-                  className="bg-pink-500 h-2 rounded-full"
-                  style={{ width: `${fanSentiment}%` }}
-                ></div>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {getFanSentimentLabel()}
-              </p>
+              <div className="flex justify-between text-xs mb-1"><span className="text-offwhite-500">Fan Sentiment</span><span className="font-bold text-pink-400">{fanSentiment}</span></div>
+              <div className="h-1.5 rounded-full bg-white/5"><div className="h-full rounded-full bg-pink-400" style={{ width: `${fanSentiment}%` }} /></div>
             </div>
             <div>
-              <div className="flex justify-between items-center mb-1">
-                <p className="text-sm">Team Morale</p>
-                <p className="font-bold">{teamMorale}</p>
-              </div>
-              <div className="w-full bg-gray-600 rounded-full h-2">
-                <div
-                  className="bg-blue-500 h-2 rounded-full"
-                  style={{ width: `${teamMorale}%` }}
-                ></div>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {getMoraleLabel()}
-              </p>
+              <div className="flex justify-between text-xs mb-1"><span className="text-offwhite-500">Team Morale</span><span className="font-bold text-blue-400">{teamMorale}</span></div>
+              <div className="h-1.5 rounded-full bg-white/5"><div className="h-full rounded-full bg-blue-400" style={{ width: `${teamMorale}%` }} /></div>
             </div>
           </div>
-          
-          {selectedOption && (
-            <div className="mt-4 p-3 bg-gray-700 rounded-lg">
-              <p className="text-sm">
-                <span className="font-medium">Morale:</span> 
-                {selectedOption.effects.morale > 0 ? "+" : ""}
-                {selectedOption.effects.morale}
-              </p>
-              <p className="text-sm">
-                <span className="font-medium">Fan Sentiment:</span> 
-                {selectedOption.effects.fanSentiment > 0 ? "+" : ""}
-                {selectedOption.effects.fanSentiment}
-              </p>
-              {selectedOption.effects.opponentBoost && (
-                <p className="text-sm">
-                  <span className="font-medium">Opponent Boost:</span> 
-                  {selectedOption.effects.opponentBoost > 0 ? "+" : ""}
-                  {selectedOption.effects.opponentBoost}
-                </p>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Navigation */}
         <div className="flex justify-between">
-          <button
-            onClick={handlePreviousQuestion}
-            disabled={currentQuestionIndex === 0}
-            className="bg-gray-600 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-bold"
-          >
-            Previous
-          </button>
-          <button
-            onClick={handleNextQuestion}
-            disabled={selectedOptions[currentQuestion.id] === undefined}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-bold"
-          >
-            {currentQuestionIndex < pressQuestions.length - 1 ? "Next" : "Finish"}
+          <button onClick={() => qIndex > 0 && setQIndex(qIndex - 1)} disabled={qIndex === 0} className="game-btn-secondary text-xs disabled:opacity-30">Previous</button>
+          <button onClick={handleNext} disabled={selected[current.id] === undefined} className="game-btn text-xs disabled:opacity-30">
+            {qIndex < pressQuestions.length - 1 ? "Next" : "Finish"}
           </button>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

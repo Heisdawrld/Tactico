@@ -1,15 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { clubs } from "@/types/club";
 import { Club } from "@/types/club";
 import {
-  CareerStatus,
-  initialCareer,
-  BoardExpectation,
-  getDefaultBoardExpectations,
-  premierLeagueTable,
-  LeagueTableEntry,
+  CareerStatus, initialCareer, getDefaultBoardExpectations, premierLeagueTable, LeagueTableEntry,
 } from "@/types/career";
 import { matches } from "@/types/match";
 
@@ -25,339 +21,162 @@ export default function CareerPage() {
       const club = clubs.find((c) => c.id === parseInt(clubId));
       setSelectedClub(club || null);
       if (club) {
-        setCareer({
-          ...initialCareer,
-          clubId: club.id,
-          boardExpectations: getDefaultBoardExpectations(club.reputation),
-        });
+        setCareer({ ...initialCareer, clubId: club.id, boardExpectations: getDefaultBoardExpectations(club.reputation) });
         setLeagueTable(premierLeagueTable);
       }
     }
   }, []);
 
-  // Simulate a week
   const simulateWeek = () => {
     if (!selectedClub) return;
-
-    // For now, just increment the week and update the table randomly
-    setWeek((prev) => {
-      const newWeek = prev + 1;
-      
-      // Every 10 weeks is a season end
-      if (newWeek % 10 === 0) {
-        // Update league table (random changes for demo)
-        const newTable = leagueTable.map((entry) => {
-          const change = Math.floor(Math.random() * 3) - 1; // -1, 0, or +1
-          const newPosition = Math.max(1, Math.min(20, entry.position + change));
-          return { ...entry, position: newPosition };
-        });
-        
-        // Sort by position
-        newTable.sort((a, b) => a.position - b.position);
-        
-        // Update club's position
-        const clubEntry = newTable.find((e) => e.clubId === selectedClub.id);
-        if (clubEntry) {
-          // Check if we met board expectations
-          const expectations = career.boardExpectations;
-          expectations.forEach((exp) => {
-            if (exp.target === "Avoid relegation" && clubEntry.position > 17) {
-              exp.progress = 0;
-            } else if (exp.target === "Finish top 4" && clubEntry.position <= 4) {
-              exp.progress = 100;
-            } else if (exp.target === "Win the league" && clubEntry.position === 1) {
-              exp.progress = 100;
-            } else {
-              exp.progress = Math.max(0, 100 - (clubEntry.position * 5));
-            }
-          });
-        }
-        
-        setLeagueTable(newTable);
-        
-        // Reset week to 1 for new season
-        return 1;
-      }
-      
-      return newWeek;
-    });
-
-    // Update reputation based on performance
-    setCareer((prev) => {
-      const clubEntry = leagueTable.find((e) => e.clubId === selectedClub.id);
-      if (clubEntry) {
-        // Simple reputation change based on position
-        const reputationChange = clubEntry.position <= 5 ? 2 : clubEntry.position > 15 ? -2 : 0;
-        return {
-          ...prev,
-          reputation: Math.max(0, Math.min(100, prev.reputation + reputationChange)),
-          week: newWeek,
-        };
-      }
-      return prev;
-    });
-  };
-
-  // Simulate a match
-  const simulateMatch = (matchId: number) => {
-    const match = matches.find((m) => m.id === matchId);
-    if (!match) return;
-
-    // Random result for demo
-    const homeScore = Math.floor(Math.random() * 5);
-    const awayScore = Math.floor(Math.random() * 5);
-    
-    // Update match result
-    const updatedMatches = matches.map((m) => {
-      if (m.id === matchId) {
-        return {
-          ...m,
-          homeScore,
-          awayScore,
-          status: "completed",
-        };
-      }
-      return m;
-    });
-
-    // For now, just show alert (we'll update the UI later)
-    const clubId = selectedClub?.id;
-    const isHome = match.homeClubId === clubId;
-    const result = isHome 
-      ? homeScore > awayScore 
-        ? "Win" 
-        : homeScore < awayScore 
-          ? "Loss" 
-          : "Draw"
-      : awayScore > homeScore 
-        ? "Win" 
-        : awayScore < homeScore 
-          ? "Loss" 
-          : "Draw";
-    
-    alert(`Match Result: ${isHome ? `${selectedClub?.name} ${homeScore}` : `${awayScore} ${selectedClub?.name}`} - ${!isHome ? `${selectedClub?.name} ${homeScore}` : `${awayScore} Opponent`} - ${result}`);
+    setWeek(prev => prev + 1);
+    const newTable = leagueTable.map(entry => ({
+      ...entry,
+      position: Math.max(1, Math.min(20, entry.position + Math.floor(Math.random() * 3) - 1)),
+    }));
+    newTable.sort((a, b) => a.position - b.position);
+    setLeagueTable(newTable);
   };
 
   if (!selectedClub) {
     return (
-      <main className="min-h-screen bg-gray-900 text-white p-8">
-        <p className="text-center">No club selected. Please select a club first.</p>
-      </main>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <p className="text-offwhite-500 text-sm">No club selected.</p>
+          <Link href="/start" className="game-btn mt-4 inline-block">Choose Club</Link>
+        </div>
+      </div>
     );
   }
 
-  // Find club's position in the table
-  const clubEntry = leagueTable.find((e) => e.clubId === selectedClub.id);
+  const clubEntry = leagueTable.find(e => e.clubId === selectedClub.id);
 
   return (
-    <main className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Career Mode</h1>
+    <div className="min-h-screen p-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold text-offwhite">Career Mode</h1>
+          <p className="text-xs text-offwhite-500 mt-0.5">{selectedClub.name} — Season 2026/27</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={simulateWeek} className="game-btn text-xs">Advance Week</button>
+          <button onClick={() => localStorage.setItem("career", JSON.stringify(career))} className="game-btn-secondary text-xs">Save</button>
+        </div>
+      </div>
 
+      <div className="grid grid-cols-12 gap-4">
         {/* Career Overview */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <h2 className="text-xl font-bold">{selectedClub.name}</h2>
-              <p className="text-gray-400">{selectedClub.league}</p>
-              <p className="text-sm mt-2">Season: 2026/27</p>
-              <p className="text-sm">Week: {week}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-400 mb-1">Current Position</p>
-              <p className="text-4xl font-bold">
-                {clubEntry ? clubEntry.position : "N/A"}
-              </p>
-              <p className="text-sm text-gray-400">
-                {clubEntry ? `${clubEntry.points} points` : ""}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-400 mb-1">Manager Reputation</p>
-              <p className="text-4xl font-bold">{career.reputation}</p>
-              <div className="w-full bg-gray-600 rounded-full h-2 mt-2">
-                <div
-                  className="bg-green-500 h-2 rounded-full"
-                  style={{ width: `${career.reputation}%` }}
-                ></div>
+        <div className="col-span-12 lg:col-span-4 space-y-4">
+          {/* Position Card */}
+          <div className="game-card p-5 text-center">
+            <p className="section-header">League Position</p>
+            <span className="text-5xl font-black gradient-text">{clubEntry?.position || '-'}</span>
+            <p className="text-sm text-offwhite-500 mt-1">{clubEntry?.points || 0} points</p>
+          </div>
+
+          {/* Season Info */}
+          <div className="game-card p-4">
+            <p className="section-header">Season Info</p>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-offwhite-500">Season</span>
+                <span className="font-medium">2026/27</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-offwhite-500">Week</span>
+                <span className="font-medium text-gold">{week}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-offwhite-500">Manager Rep</span>
+                <span className="font-medium">{career.reputation}</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-white/5">
+                <div className="h-full rounded-full bg-green-400" style={{ width: `${career.reputation}%` }} />
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Board Expectations */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4">Board Expectations</h2>
-          
-          <div className="space-y-4">
-            {career.boardExpectations.map((expectation, index) => (
-              <div
-                key={index}
-                className={`bg-gray-700 rounded-lg p-4 ${
-                  expectation.progress >= 75 
-                    ? "border-l-4 border-green-500" 
-                    : expectation.progress >= 50 
-                      ? "border-l-4 border-yellow-500" 
-                      : "border-l-4 border-red-500"
-                }`}
-              >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-medium">{expectation.target}</p>
-                    <p className="text-sm text-gray-400">
-                      Priority: {expectation.priority}
-                    </p>
+          {/* Board Expectations */}
+          <div className="game-card p-4">
+            <p className="section-header">Board Expectations</p>
+            <div className="space-y-2">
+              {career.boardExpectations.map((exp, i) => (
+                <div key={i} className={`p-2 rounded-lg border-l-2 ${
+                  exp.progress >= 75 ? 'border-green-400' : exp.progress >= 50 ? 'border-yellow-400' : 'border-red-400'
+                } bg-white/[0.02]`}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-medium">{exp.target}</span>
+                    <span className="text-[10px] font-bold">{exp.progress}%</span>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm">Progress: {expectation.progress}%</p>
-                    <div className="w-32 bg-gray-600 rounded-full h-2 mt-1">
-                      <div
-                        className={`h-2 rounded-full ${
-                          expectation.progress >= 75 
-                            ? "bg-green-500" 
-                            : expectation.progress >= 50 
-                              ? "bg-yellow-500" 
-                              : "bg-red-500"
-                        }`}
-                        style={{ width: `${expectation.progress}%` }}
-                      ></div>
-                    </div>
+                  <div className="h-1 rounded-full bg-white/5 mt-1">
+                    <div className={`h-full rounded-full ${
+                      exp.progress >= 75 ? 'bg-green-400' : exp.progress >= 50 ? 'bg-yellow-400' : 'bg-red-400'
+                    }`} style={{ width: `${exp.progress}%` }} />
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  Deadline: {expectation.deadline}
-                </p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
         {/* League Table */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4">{selectedClub.league} Table</h2>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="text-left p-3">Pos</th>
-                  <th className="text-left p-3">Club</th>
-                  <th className="text-left p-3">P</th>
-                  <th className="text-left p-3">W</th>
-                  <th className="text-left p-3">D</th>
-                  <th className="text-left p-3">L</th>
-                  <th className="text-left p-3">GF</th>
-                  <th className="text-left p-3">GA</th>
-                  <th className="text-left p-3">GD</th>
-                  <th className="text-left p-3">Pts</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leagueTable.map((entry) => {
-                  const isSelectedClub = entry.clubId === selectedClub.id;
-                  return (
-                    <tr
-                      key={entry.clubId}
-                      className={`border-b border-gray-700 ${
-                        isSelectedClub ? "bg-blue-600" : "hover:bg-gray-700"
-                      }`}
-                    >
-                      <td className="p-3">{entry.position}</td>
-                      <td className="p-3 font-medium">{entry.clubName}</td>
-                      <td className="p-3">{entry.played}</td>
-                      <td className="p-3">{entry.won}</td>
-                      <td className="p-3">{entry.drawn}</td>
-                      <td className="p-3">{entry.lost}</td>
-                      <td className="p-3">{entry.goalsFor}</td>
-                      <td className="p-3">{entry.goalsAgainst}</td>
-                      <td className="p-3">{entry.goalDifference > 0 ? `+${entry.goalDifference}` : entry.goalDifference}</td>
-                      <td className="p-3 font-bold">{entry.points}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <div className="col-span-12 lg:col-span-8">
+          <div className="game-card p-4">
+            <p className="section-header">{selectedClub.league} Table</p>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/5">
+                    {["#", "Club", "P", "W", "D", "L", "GD", "Pts"].map(h => (
+                      <th key={h} className="text-[10px] font-semibold text-offwhite-500 uppercase tracking-wider py-2 px-2 text-left">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {leagueTable.map((entry) => {
+                    const isUser = entry.clubId === selectedClub.id;
+                    return (
+                      <tr key={entry.clubId} className={`border-b border-white/[0.03] transition-colors ${
+                        isUser ? 'bg-gold/5' : 'hover:bg-white/[0.02]'
+                      }`}>
+                        <td className="py-2 px-2 text-xs font-bold text-offwhite-500">{entry.position}</td>
+                        <td className={`py-2 px-2 text-xs font-semibold ${isUser ? 'text-gold' : 'text-offwhite'}`}>{entry.clubName}</td>
+                        <td className="py-2 px-2 text-xs text-offwhite-500">{entry.played}</td>
+                        <td className="py-2 px-2 text-xs text-green-400">{entry.won}</td>
+                        <td className="py-2 px-2 text-xs text-offwhite-500">{entry.drawn}</td>
+                        <td className="py-2 px-2 text-xs text-red-400">{entry.lost}</td>
+                        <td className="py-2 px-2 text-xs text-offwhite-300">{entry.goalDifference > 0 ? `+${entry.goalDifference}` : entry.goalDifference}</td>
+                        <td className="py-2 px-2 text-xs font-black text-offwhite">{entry.points}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
 
-        {/* Next Matches */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4">Next Matches</h2>
-          
-          <div className="space-y-4">
-            {matches
-              .filter((m) => {
-                const isClubInvolved = m.homeClubId === selectedClub.id || m.awayClubId === selectedClub.id;
-                const isUpcoming = new Date(m.matchDate) > new Date();
-                return isClubInvolved && isUpcoming;
-              })
-              .slice(0, 5)
-              .map((match) => {
-                const homeClub = clubs.find((c) => c.id === match.homeClubId);
-                const awayClub = clubs.find((c) => c.id === match.awayClubId);
-                const isHome = match.homeClubId === selectedClub.id;
-                
+          {/* Upcoming Matches */}
+          <div className="game-card p-4 mt-4">
+            <p className="section-header">Upcoming Fixtures</p>
+            <div className="space-y-2">
+              {matches.filter(m => (m.homeClubId === selectedClub.id || m.awayClubId === selectedClub.id) && new Date(m.matchDate) > new Date()).slice(0, 5).map(match => {
+                const home = clubs.find(c => c.id === match.homeClubId);
+                const away = clubs.find(c => c.id === match.awayClubId);
                 return (
-                  <div
-                    key={match.id}
-                    className="bg-gray-700 rounded-lg p-4 flex justify-between items-center"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="text-center">
-                        <p className="font-medium">{homeClub?.name}</p>
-                        <div
-                          className="w-8 h-6 mx-auto mt-1 rounded"
-                          style={{ backgroundColor: homeClub?.homeKitColor }}
-                        ></div>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-bold">VS</p>
-                        <p className="text-sm text-gray-400">
-                          {new Date(match.matchDate).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-medium">{awayClub?.name}</p>
-                        <div
-                          className="w-8 h-6 mx-auto mt-1 rounded"
-                          style={{ backgroundColor: awayClub?.homeKitColor }}
-                        ></div>
-                      </div>
+                  <div key={match.id} className="flex items-center justify-between py-2 border-b border-white/[0.03]">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] text-offwhite-500">{match.competition}</span>
+                      <span className="text-xs text-offwhite-300">{home?.name} vs {away?.name}</span>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-400">{match.competition}</p>
-                      <button
-                        onClick={() => simulateMatch(match.id)}
-                        className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-                      >
-                        Simulate
-                      </button>
-                    </div>
+                    <span className="text-[10px] text-offwhite-500">{new Date(match.matchDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                   </div>
                 );
               })}
+            </div>
           </div>
         </div>
-
-        {/* Career Actions */}
-        <div className="flex justify-end gap-4">
-          <button
-            onClick={simulateWeek}
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold"
-          >
-            Simulate Week
-          </button>
-          <button
-            onClick={() => {
-              localStorage.setItem("career", JSON.stringify(career));
-              alert("Career progress saved!");
-            }}
-            className="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-bold"
-          >
-            Save Career
-          </button>
-        </div>
       </div>
-    </main>
+    </div>
   );
 }

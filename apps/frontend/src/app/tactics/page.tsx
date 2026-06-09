@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { clubs } from "@/types/club";
 import { players } from "@/types/player";
 import { matches } from "@/types/match";
@@ -23,292 +24,178 @@ export default function TacticsPage() {
   const [tactics, setTactics] = useState<Tactics>(defaultTactics);
   const [selectedFormation, setSelectedFormation] = useState<Formation>("4-4-2");
   const [lineup, setLineup] = useState<LineupPosition[]>([]);
-  const [opponent, setOpponent] = useState<{ id: number; name: string } | null>(null);
   const [scoutReport, setScoutReport] = useState<ScoutReport | null>(null);
+  const [opponent, setOpponent] = useState<{ id: number; name: string } | null>(null);
 
-  // Load selected club and players
   useEffect(() => {
     const clubId = localStorage.getItem("selectedClubId");
     if (clubId) {
       const club = clubs.find((c) => c.id === parseInt(clubId));
       setSelectedClub(club || null);
       if (club) {
-        const playersInClub = players.filter((p) => p.clubId === club.id);
-        setClubPlayers(playersInClub);
-        
-        // Initialize lineup
+        setClubPlayers(players.filter((p) => p.clubId === club.id));
         const formation = formationPositions[selectedFormation];
-        const newLineup = formation.map((pos) => ({
-          player: null,
-          position: pos.position,
-          x: pos.x,
-          y: pos.y,
-        }));
-        setLineup(newLineup);
+        setLineup(formation.map((pos) => ({ player: null, position: pos.position, x: pos.x, y: pos.y })));
       }
     }
   }, [selectedFormation]);
 
-  // Load next opponent (for scout report)
   useEffect(() => {
     if (!selectedClub) return;
-    
-    const clubId = selectedClub.id;
-    const clubMatches = matches.filter(
-      (m) => m.homeClubId === clubId || m.awayClubId === clubId
-    );
-    const upcomingMatches = clubMatches.filter(
-      (m) => new Date(m.matchDate) > new Date()
-    );
-    
-    if (upcomingMatches.length > 0) {
-      upcomingMatches.sort(
-        (a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime()
-      );
-      const nextMatch = upcomingMatches[0];
-      const opponentId = nextMatch.homeClubId === clubId 
-        ? nextMatch.awayClubId 
-        : nextMatch.homeClubId;
+    const clubMatches = matches.filter(m => m.homeClubId === selectedClub.id || m.awayClubId === selectedClub.id);
+    const upcoming = clubMatches.filter(m => new Date(m.matchDate) > new Date());
+    if (upcoming.length > 0) {
+      upcoming.sort((a, b) => new Date(a.matchDate).getTime() - new Date(b.matchDate).getTime());
+      const nextMatch = upcoming[0];
+      const opponentId = nextMatch.homeClubId === selectedClub.id ? nextMatch.awayClubId : nextMatch.homeClubId;
       const opponentClub = clubs.find((c) => c.id === opponentId);
-      
       if (opponentClub) {
         setOpponent({ id: opponentClub.id, name: opponentClub.name });
         const report = scoutReports[opponentClub.id];
-        if (report) {
-          setScoutReport(report);
-        }
+        if (report) setScoutReport(report);
       }
     }
   }, [selectedClub]);
 
-  const handleFormationChange = (formation: Formation) => {
-    setSelectedFormation(formation);
-    setTactics({ ...tactics, formation });
-  };
-
-  const handleLineupChange = (newLineup: LineupPosition[]) => {
-    setLineup(newLineup);
-  };
-
-  const handleTacticChange = (key: keyof Tactics, value: string) => {
-    setTactics({ ...tactics, [key]: value } as Tactics);
-  };
-
   const handleSave = () => {
     localStorage.setItem("tactics", JSON.stringify(tactics));
     localStorage.setItem("lineup", JSON.stringify(lineup));
-    alert("Tactics and lineup saved!");
   };
 
   if (!selectedClub) {
     return (
-      <main className="min-h-screen bg-gray-900 text-white p-8">
-        <p className="text-center">No club selected. Please select a club first.</p>
-      </main>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <p className="text-offwhite-500 text-sm">No club selected.</p>
+          <Link href="/start" className="game-btn mt-4 inline-block">Choose Club</Link>
+        </div>
+      </div>
     );
   }
 
+  const tacticOptions: { key: keyof Tactics; label: string; options: { value: string; label: string; desc: string }[] }[] = [
+    { key: "pressingIntensity", label: "Pressing", options: [
+      { value: "low", label: "Low", desc: "Sit back, conserve energy" },
+      { value: "medium", label: "Med", desc: "Balanced press triggers" },
+      { value: "high", label: "High", desc: "Aggressive, high risk" },
+    ]},
+    { key: "passingStyle", label: "Passing", options: [
+      { value: "short", label: "Short", desc: "Possession based" },
+      { value: "mixed", label: "Mixed", desc: "Balanced approach" },
+      { value: "long", label: "Long", desc: "Direct, aerial" },
+    ]},
+    { key: "defensiveLine", label: "Def Line", options: [
+      { value: "low", label: "Deep", desc: "Compact, safe" },
+      { value: "medium", label: "Mid", desc: "Balanced shape" },
+      { value: "high", label: "High", desc: "Offside trap risk" },
+    ]},
+  ];
+
   return (
-    <main className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Tactics</h1>
+    <div className="min-h-screen p-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold text-offwhite">Tactics Board</h1>
+          <p className="text-xs text-offwhite-500 mt-0.5">{selectedClub.name} — {selectedFormation}</p>
+        </div>
+        <button onClick={handleSave} className="game-btn text-xs">Save Tactics</button>
+      </div>
 
-        {/* Next Opponent Scout Report */}
-        {scoutReport && (
-          <div className="bg-gray-800 rounded-lg p-4 mb-6">
-            <div className="flex justify-between items-start">
-              <div>
-                <h2 className="text-xl font-bold">Scout Report: {opponent?.name}</h2>
-                <p className="text-sm text-gray-400">
-                  Formation: {scoutReport.formation} | Style: {scoutReport.playingStyle}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm">Threat Level: {scoutReport.overallThreat}/10</p>
-              </div>
-            </div>
-            
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <h3 className="font-medium mb-2">Strengths</h3>
-                <ul className="list-disc list-inside text-sm text-green-400">
-                  {scoutReport.strengths.map((strength, i) => (
-                    <li key={i}>{strength}</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-medium mb-2">Weaknesses</h3>
-                <ul className="list-disc list-inside text-sm text-red-400">
-                  {scoutReport.weaknesses.map((weakness, i) => (
-                    <li key={i}>{weakness}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <h3 className="font-medium mb-2">Key Players</h3>
-              <div className="flex gap-4">
-                {scoutReport.keyPlayers.map((player) => (
-                  <div
-                    key={player.id}
-                    className="bg-gray-700 rounded-lg p-2 flex-1"
-                  >
-                    <p className="font-medium">{player.name}</p>
-                    <p className="text-sm text-gray-400">{player.position}</p>
-                    <p className="text-sm">Rating: {player.overallRating}</p>
-                    <p className="text-xs text-gray-500">
-                      Threat: {player.threatLevel}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Formation Editor */}
-          <div className="lg:col-span-2">
-            <FormationEditor
-              club={selectedClub}
-              players={clubPlayers}
-              onFormationChange={handleFormationChange}
-              onLineupChange={handleLineupChange}
-            />
-          </div>
-
-          {/* Team Instructions */}
-          <div className="space-y-6">
-            <div className="bg-gray-800 rounded-lg p-4">
-              <h2 className="text-xl font-bold mb-4">Team Instructions</h2>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Pressing Intensity
-                  </label>
-                  <select
-                    value={tactics.pressingIntensity}
-                    onChange={(e) => handleTacticChange("pressingIntensity", e.target.value)}
-                    className="w-full p-2 rounded-lg bg-gray-700 border border-gray-600"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Higher = More aggressive pressing, but risks leaving gaps
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Passing Style
-                  </label>
-                  <select
-                    value={tactics.passingStyle}
-                    onChange={(e) => handleTacticChange("passingStyle", e.target.value)}
-                    className="w-full p-2 rounded-lg bg-gray-700 border border-gray-600"
-                  >
-                    <option value="short">Short</option>
-                    <option value="mixed">Mixed</option>
-                    <option value="long">Long</option>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Short = Safer, Long = More direct
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Defensive Line
-                  </label>
-                  <select
-                    value={tactics.defensiveLine}
-                    onChange={(e) => handleTacticChange("defensiveLine", e.target.value)}
-                    className="w-full p-2 rounded-lg bg-gray-700 border border-gray-600"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Higher = More space behind defence
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Tempo
-                  </label>
-                  <select
-                    value={tactics.tempo || "normal"}
-                    onChange={(e) => handleTacticChange("tempo" as keyof Tactics, e.target.value)}
-                    className="w-full p-2 rounded-lg bg-gray-700 border border-gray-600"
-                  >
-                    <option value="slow">Slow</option>
-                    <option value="normal">Normal</option>
-                    <option value="fast">Fast</option>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Faster = More quick passes, but less accuracy
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Timewasting
-                  </label>
-                  <select
-                    value={tactics.timewasting || "off"}
-                    onChange={(e) => handleTacticChange("timewasting" as keyof Tactics, e.target.value)}
-                    className="w-full p-2 rounded-lg bg-gray-700 border border-gray-600"
-                  >
-                    <option value="off">Off</option>
-                    <option value="on">On</option>
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Only effective when winning
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Save Button */}
-            <button
-              onClick={handleSave}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold"
-            >
-              Save Tactics & Lineup
-            </button>
-          </div>
+      <div className="grid grid-cols-12 gap-4">
+        {/* Formation Editor — Main Area */}
+        <div className="col-span-12 lg:col-span-8">
+          <FormationEditor
+            club={selectedClub}
+            players={clubPlayers}
+            onFormationChange={setSelectedFormation}
+            onLineupChange={setLineup}
+          />
         </div>
 
-        {/* Lineup Summary */}
-        <div className="mt-6 bg-gray-800 rounded-lg p-4">
-          <h2 className="text-xl font-bold mb-4">Starting Lineup</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-11 gap-2">
-            {lineup.map((pos, index) => (
-              <div
-                key={index}
-                className="bg-gray-700 rounded-lg p-2 text-center text-sm"
-              >
-                <p className="font-medium">{pos.position}</p>
-                {pos.player ? (
-                  <>
-                    <p className="text-xs">{pos.player.lastName}</p>
-                    <p className="text-xs text-gray-400">{pos.player.overallRating}</p>
-                  </>
-                ) : (
-                  <p className="text-xs text-gray-500">Empty</p>
-                )}
-              </div>
-            ))}
+        {/* Right Panel — Instructions + Scout */}
+        <div className="col-span-12 lg:col-span-4 space-y-4">
+          {/* Team Instructions */}
+          <div className="game-card p-4">
+            <p className="section-header">Team Instructions</p>
+            <div className="space-y-4">
+              {tacticOptions.map((opt) => (
+                <div key={opt.key}>
+                  <p className="text-xs font-semibold text-offwhite-300 mb-2">{opt.label}</p>
+                  <div className="flex gap-1">
+                    {opt.options.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => setTactics({ ...tactics, [opt.key]: option.value })}
+                        className={`flex-1 py-2 px-2 rounded-lg text-[10px] font-semibold transition-all duration-150 ${
+                          tactics[opt.key] === option.value
+                            ? "bg-gold/20 text-gold ring-1 ring-gold/30"
+                            : "bg-white/[0.03] text-offwhite-500 hover:bg-white/[0.06]"
+                        }`}
+                        title={option.desc}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[9px] text-offwhite-500 mt-1">
+                    {opt.options.find(o => o.value === tactics[opt.key])?.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
+
+          {/* Scout Report */}
+          {scoutReport && (
+            <div className="game-card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="section-header mb-0">Scout Report</p>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] text-offwhite-500">THREAT</span>
+                  <span className={`text-sm font-bold ${
+                    scoutReport.overallThreat >= 7 ? 'text-red-400' :
+                    scoutReport.overallThreat >= 4 ? 'text-yellow-400' : 'text-green-400'
+                  }`}>{scoutReport.overallThreat}/10</span>
+                </div>
+              </div>
+              <p className="text-xs text-offwhite-300 mb-3">{opponent?.name} — {scoutReport.formation} / {scoutReport.playingStyle}</p>
+
+              <div className="space-y-2 mb-3">
+                <div>
+                  <p className="text-[9px] font-semibold text-green-400 uppercase mb-1">Strengths</p>
+                  {scoutReport.strengths.slice(0, 2).map((s, i) => (
+                    <p key={i} className="text-[11px] text-offwhite-300">{s}</p>
+                  ))}
+                </div>
+                <div>
+                  <p className="text-[9px] font-semibold text-red-400 uppercase mb-1">Weaknesses</p>
+                  {scoutReport.weaknesses.slice(0, 2).map((w, i) => (
+                    <p key={i} className="text-[11px] text-offwhite-300">{w}</p>
+                  ))}
+                </div>
+              </div>
+
+              {/* Key Players */}
+              {scoutReport.keyPlayers.length > 0 && (
+                <div>
+                  <p className="text-[9px] font-semibold text-offwhite-500 uppercase mb-1">Key Players</p>
+                  <div className="space-y-1">
+                    {scoutReport.keyPlayers.slice(0, 2).map((p) => (
+                      <div key={p.id} className="flex items-center justify-between text-[10px]">
+                        <span className="text-offwhite-300">{p.name}</span>
+                        <span className={`font-bold ${
+                          p.threatLevel === "High" || p.threatLevel === "Extreme" ? "text-red-400" : "text-yellow-400"
+                        }`}>{p.threatLevel}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
-    </main>
+    </div>
   );
 }

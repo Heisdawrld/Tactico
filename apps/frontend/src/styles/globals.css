@@ -3,17 +3,271 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 255, 255, 255;
-  --background-end-rgb: 255, 255, 255;
+  /* Core palette */
+  --charcoal: #1A1A1E;
+  --charcoal-50: #2A2A30;
+  --graphite: #2D2D35;
+  --graphite-50: #3D3D47;
+  --midnight: #1E293B;
+  --offwhite: #F0F0F5;
+  --offwhite-500: #A0A0B0;
+  --gold: #C9A84C;
+  --gold-50: #E8D48B;
+  --pitch: #1B5E20;
+
+  /* Glassmorphism */
+  --glass-bg: rgba(45, 45, 53, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-hover: rgba(255, 255, 255, 0.12);
+
+  /* Surfaces */
+  --surface-primary: #1A1A1E;
+  --surface-secondary: #222228;
+  --surface-tertiary: #2A2A30;
+  --surface-elevated: #32323A;
+
+  /* Text */
+  --text-primary: #F0F0F5;
+  --text-secondary: #A0A0B0;
+  --text-tertiary: #6B6B7B;
+  --text-accent: #C9A84C;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  color: var(--text-primary);
+  background: var(--surface-primary);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(160, 160, 176, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(160, 160, 176, 0.35);
+}
+
+/* Utility classes */
+@layer components {
+  /* Glass panel */
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+  }
+
+  .glass-heavy {
+    background: rgba(30, 30, 38, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .glass-light {
+    background: rgba(45, 45, 53, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  /* Game card */
+  .game-card {
+    @apply rounded-lg transition-all duration-200;
+    background: var(--surface-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .game-card:hover {
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    transform: translateY(-1px);
+  }
+
+  /* Game button */
+  .game-btn {
+    @apply px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-150;
+    background: linear-gradient(135deg, var(--gold) 0%, #B8963E 100%);
+    color: #1A1A1E;
+    box-shadow: 0 2px 8px rgba(201, 168, 76, 0.3);
+  }
+
+  .game-btn:hover {
+    box-shadow: 0 4px 16px rgba(201, 168, 76, 0.5);
+    transform: translateY(-1px);
+  }
+
+  .game-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(201, 168, 76, 0.3);
+  }
+
+  .game-btn-secondary {
+    @apply px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-150;
+    background: var(--surface-tertiary);
+    color: var(--text-primary);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .game-btn-secondary:hover {
+    background: var(--surface-elevated);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .game-btn-danger {
+    @apply px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-150;
+    background: rgba(239, 68, 68, 0.15);
+    color: #EF4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+
+  .game-btn-danger:hover {
+    background: rgba(239, 68, 68, 0.25);
+  }
+
+  /* Momentum bar */
+  .momentum-bar {
+    height: 3px;
+    background: linear-gradient(90deg, #22C55E 0%, #EAB308 50%, #EF4444 100%);
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .momentum-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 2s linear infinite;
+    background-size: 200% 100%;
+  }
+
+  /* Stat pill */
+  .stat-pill {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium;
+    background: var(--surface-tertiary);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  /* Bloomberg-style feed row */
+  .feed-row {
+    @apply flex items-center gap-3 px-3 py-2 text-xs border-b;
+    border-color: rgba(255, 255, 255, 0.03);
+  }
+
+  .feed-row:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  /* Rating badge */
+  .rating-badge {
+    @apply inline-flex items-center justify-center w-8 h-8 rounded-md text-xs font-bold;
+  }
+
+  .rating-badge-gold {
+    background: linear-gradient(135deg, #C9A84C 0%, #E8D48B 100%);
+    color: #1A1A1E;
+  }
+
+  .rating-badge-green {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22C55E;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+  }
+
+  .rating-badge-yellow {
+    background: rgba(234, 179, 8, 0.15);
+    color: #EAB308;
+    border: 1px solid rgba(234, 179, 8, 0.2);
+  }
+
+  .rating-badge-red {
+    background: rgba(239, 68, 68, 0.15);
+    color: #EF4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+
+  /* Section header */
+  .section-header {
+    @apply text-xs font-semibold uppercase tracking-wider mb-3;
+    color: var(--text-tertiary);
+    letter-spacing: 0.1em;
+  }
+
+  /* Live indicator */
+  .live-dot {
+    @apply inline-block w-2 h-2 rounded-full bg-red-500;
+    animation: pulseGlow 2s ease-in-out infinite;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+  }
+
+  /* Ticker animation for Bloomberg-style feeds */
+  .ticker-wrap {
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .ticker-content {
+    display: inline-block;
+    animation: ticker 30s linear infinite;
+  }
+}
+
+/* Animations */
+@keyframes pulseGlow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Selection style */
+::selection {
+  background: rgba(201, 168, 76, 0.3);
+  color: #F0F0F5;
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* Page transition */
+.page-enter {
+  animation: fadeInUp 250ms ease-out;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #C9A84C 0%, #E8D48B 50%, #C9A84C 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
