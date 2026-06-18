@@ -368,37 +368,34 @@ CREATE TABLE IF NOT EXISTS match_events (
   FOREIGN KEY (club_id) REFERENCES clubs(id)
 );
 
+
 -- ============================================
--- USER TABLES
+-- USER TABLES (Auth.js Drizzle Adapter Compatible)
 -- ============================================
 
--- Users
-CREATE TABLE IF NOT EXISTS users (
+-- Users (Table name: "user")
+CREATE TABLE IF NOT EXISTS "user" (
   id TEXT PRIMARY KEY,
   name TEXT,
-  email TEXT UNIQUE NOT NULL,
-  password TEXT,
-  created_at TEXT DEFAULT (datetime('now')),
-  last_login TEXT,
-  email_verified TEXT,
+  email TEXT UNIQUE,
+  emailVerified INTEGER,
   image TEXT
 );
 
--- User Sessions
-CREATE TABLE IF NOT EXISTS sessions (
-  session_token TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  expires TEXT NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users(id)
+-- User Sessions (Table name: "session")
+CREATE TABLE IF NOT EXISTS "session" (
+  sessionToken TEXT PRIMARY KEY,
+  userId TEXT NOT NULL,
+  expires INTEGER NOT NULL,
+  FOREIGN KEY (userId) REFERENCES "user"(id) ON DELETE CASCADE
 );
 
--- User Accounts (for OAuth)
-CREATE TABLE IF NOT EXISTS accounts (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
+-- User Accounts (for OAuth) (Table name: "account")
+CREATE TABLE IF NOT EXISTS "account" (
+  userId TEXT NOT NULL,
   type TEXT NOT NULL,
   provider TEXT NOT NULL,
-  provider_account_id TEXT NOT NULL,
+  providerAccountId TEXT NOT NULL,
   refresh_token TEXT,
   access_token TEXT,
   expires_at INTEGER,
@@ -406,16 +403,30 @@ CREATE TABLE IF NOT EXISTS accounts (
   scope TEXT,
   id_token TEXT,
   session_state TEXT,
-  FOREIGN KEY (user_id) REFERENCES users(id),
-  UNIQUE (provider, provider_account_id)
+  FOREIGN KEY (userId) REFERENCES "user"(id) ON DELETE CASCADE,
+  PRIMARY KEY (provider, providerAccountId)
 );
 
--- User Verification Tokens
-CREATE TABLE IF NOT EXISTS verification_tokens (
+-- User Verification Tokens (Table name: "verificationToken")
+CREATE TABLE IF NOT EXISTS "verificationToken" (
   identifier TEXT NOT NULL,
   token TEXT NOT NULL,
-  expires TEXT NOT NULL,
+  expires INTEGER NOT NULL,
   PRIMARY KEY (identifier, token)
+);
+
+-- Authenticators (for Passkeys/WebAuthn) (Table name: "authenticator")
+CREATE TABLE IF NOT EXISTS "authenticator" (
+  credentialID TEXT NOT NULL UNIQUE,
+  userId TEXT NOT NULL,
+  providerAccountId TEXT NOT NULL,
+  credentialPublicKey TEXT NOT NULL,
+  counter INTEGER NOT NULL,
+  credentialDeviceType TEXT NOT NULL,
+  credentialBackedUp INTEGER NOT NULL,
+  transports TEXT,
+  FOREIGN KEY (userId) REFERENCES "user"(id) ON DELETE CASCADE,
+  PRIMARY KEY (userId, credentialID)
 );
 
 -- ============================================
