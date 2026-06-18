@@ -380,43 +380,41 @@ CREATE TABLE IF NOT EXISTS users (
   password TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   last_login TEXT,
-  email_verified BOOLEAN DEFAULT 0,
+  email_verified TEXT,
   image TEXT
 );
 
 -- User Sessions
-CREATE TABLE IF NOT EXISTS user_sessions (
-  id TEXT PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS sessions (
+  session_token TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
-  expires_at TEXT NOT NULL,
-  -- Foreign keys
+  expires TEXT NOT NULL,
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 -- User Accounts (for OAuth)
-CREATE TABLE IF NOT EXISTS user_accounts (
+CREATE TABLE IF NOT EXISTS accounts (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
-  provider_type TEXT NOT NULL,
-  provider_id TEXT NOT NULL,
+  type TEXT NOT NULL,
+  provider TEXT NOT NULL,
   provider_account_id TEXT NOT NULL,
   refresh_token TEXT,
   access_token TEXT,
-  expires_at TEXT,
+  expires_at INTEGER,
   token_type TEXT,
   scope TEXT,
   id_token TEXT,
   session_state TEXT,
-  -- Foreign keys
   FOREIGN KEY (user_id) REFERENCES users(id),
-  UNIQUE (provider_id, provider_account_id)
+  UNIQUE (provider, provider_account_id)
 );
 
 -- User Verification Tokens
-CREATE TABLE IF NOT EXISTS user_verification_tokens (
+CREATE TABLE IF NOT EXISTS verification_tokens (
   identifier TEXT NOT NULL,
   token TEXT NOT NULL,
-  expires_at TEXT NOT NULL,
+  expires TEXT NOT NULL,
   PRIMARY KEY (identifier, token)
 );
 

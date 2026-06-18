@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const url = `https://api.bzzoiro.com/${endpoint}`;
+    const url = `https://sports.bzzoiro.com/api/v2/${endpoint}`;
     const response = await fetch(url, {
       headers: {
         "Authorization": `Bearer ${apiKey}`,
