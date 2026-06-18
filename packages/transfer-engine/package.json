@@ -12,8 +12,7 @@
   },
   "dependencies": {
     "@tactico/database": "workspace:*",
-    "@tactico/shared": "workspace:*",
-    "@tactico/finance-engine": "workspace:*"
+    "@tactico/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.0",
