@@ -5,6 +5,7 @@ import { LibSQLAdapter } from "@auth/libsql-adapter";
 import { getDbClient } from "@tactico/database";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   adapter: LibSQLAdapter(getDbClient()),
   providers: [
     Google({
