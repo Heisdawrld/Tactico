@@ -1,50 +1,41 @@
 services:
-  # Web Application (Next.js)
+  # Frontend Application (Next.js + PixiJS)
   - type: web
-    name: tactico-web
+    name: tactico-frontend
     env: node
     region: oregon
     plan: starter
-    buildCommand: cd apps/web && npm install && npm run build
-    startCommand: cd apps/web && npm run start
+    buildCommand: pnpm install && pnpm --filter frontend build
+    startCommand: pnpm --filter frontend start
     envVars:
       - key: NODE_ENV
         value: production
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          name: tactico-api
-          type: web
-          envVarKey: RENDER_EXTERNAL_URL
-      - key: DATABASE_URL
-        fromDatabase:
-          name: tactico-db
-          property: connectionString
-      - key: AUTH_SECRET
+        sync: false
+        # User will need to set this to the Render URL of tactico-backend
+      - key: NEXTAUTH_URL
+        sync: false
+      - key: NEXTAUTH_SECRET
         generateValue: true
 
-  # API Service (Next.js API Routes)
+  # Backend API Service (Next.js API + Socket.io)
   - type: web
-    name: tactico-api
+    name: tactico-backend
     env: node
     region: oregon
     plan: starter
-    buildCommand: cd apps/api && npm install && npm run build
-    startCommand: cd apps/api && npm run start
+    buildCommand: pnpm install && pnpm --filter backend build
+    startCommand: pnpm --filter backend start
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: tactico-db
-          property: connectionString
-      - key: AUTH_SECRET
+      - key: NEXTAUTH_URL
+        sync: false
+      - key: NEXTAUTH_SECRET
         generateValue: true
-      - key: SESSION_SECRET
-        generateValue: true
-
-databases:
-  - name: tactico-db
-    databaseName: tactico
-    user: tactico_user
-    plan: starter
-    region: oregon
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: BZZOIRO_API_KEY
+        sync: false
