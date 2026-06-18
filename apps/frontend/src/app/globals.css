@@ -2,21 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbar styles for the premium feel */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #1A1A1E; /* charcoal */
-}
-
-::-webkit-scrollbar-thumb {
-  background: #3D3D47; /* graphite-50 */
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #C9A84C; /* gold */
+body {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  background-color: #0a0a0a;
+  color: #ededed;
 }
