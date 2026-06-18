@@ -1,5 +1,4 @@
 import { db } from "../packages/database/src/index";
-import fetch from "node-fetch";
 
 const BZZOIRO_API_KEY = process.env.BZZOIRO_API_KEY || "b14356184634212ce6c3d38bf7814514d46ba74a";
 const BZZOIRO_BASE_URL = "https://sports.bzzoiro.com/api/v2";
