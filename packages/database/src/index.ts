@@ -92,10 +92,16 @@ export async function initializeDatabase(): Promise<void> {
   const schema = fs.readFileSync(schemaPath, 'utf-8');
   
   // Split by semicolons and execute each statement
-  const statements = schema
+  // Remove all comment lines first to avoid filtering out valid SQL statements
+  const schemaWithoutComments = schema
+    .split('\n')
+    .filter((line: string) => !line.trim().startsWith('--'))
+    .join('\n');
+
+  const statements = schemaWithoutComments
     .split(';')
     .map((s: string) => s.trim())
-    .filter((s: string) => s.length > 0 && !s.startsWith('--'));
+    .filter((s: string) => s.length > 0);
 
   await transaction(async (db) => {
     for (const statement of statements) {
