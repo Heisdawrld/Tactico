@@ -468,9 +468,6 @@ CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status);
 CREATE INDEX IF NOT EXISTS idx_match_events_match ON match_events(match_id);
 CREATE INDEX IF NOT EXISTS idx_match_events_type ON match_events(type);
 
--- Users
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-
 -- ============================================
 -- SAMPLE DATA
 -- ============================================
