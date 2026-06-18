@@ -33,7 +33,7 @@ export interface CareerStatus {
   week: number;
   reputation: number;
   finances: number;
-  boardExpectations: BoardExpectation;
+  boardExpectations: BoardExpectation[];
 }
 
 // Board expectations
