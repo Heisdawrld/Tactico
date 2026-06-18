@@ -4,9 +4,7 @@ const nextConfig = {
   images: {
     unoptimized: true, // Required for PixiJS
   },
-  experimental: {
-    appDir: true,
-  },
+  
 };
 
 module.exports = nextConfig;
