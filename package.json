@@ -6,11 +6,17 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "lint": "turbo run lint",
-    "test": "turbo run test"
+    "test": "turbo run test",
+    "sync:full": "tsx scripts/sync-db.ts full",
+    "sync:leagues": "tsx scripts/sync-db.ts leagues",
+    "sync:teams": "tsx scripts/sync-db.ts teams",
+    "sync:players": "tsx scripts/sync-db.ts players",
+    "sync:refresh": "tsx scripts/sync-db.ts refresh"
   },
   "devDependencies": {
     "turbo": "^2.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "tsx": "^4.0.0"
   },
   "packageManager": "pnpm@8.15.0",
   "engines": {
