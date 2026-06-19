@@ -1,19 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { clubs } from "@/types/club";
+import { Club } from "@/types/club";
+import { apiFetch } from "@/lib/api";
 
 export default function ClubSelector() {
+  const [clubs, setClubs] = useState<Club[]>([]);
   const [selectedClubId, setSelectedClubId] = useState<number | null>(null);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    apiFetch("/api/clubs")
+      .then((data) => setClubs(data))
+      .catch((err) => console.error("Failed to fetch clubs:", err))
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleSelectClub = (clubId: number) => {
     setSelectedClubId(clubId);
     localStorage.setItem("selectedClubId", clubId.toString());
     router.push("/dashboard");
   };
+
+  if (loading) {
+    return <div className="text-center text-offwhite py-12">Loading clubs...</div>;
+  }
 
   return (
     <div className="space-y-6">

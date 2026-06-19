@@ -4,7 +4,7 @@ const nextConfig = {
   images: {
     unoptimized: true, // Required for PixiJS
   },
-  
+  transpilePackages: ["@tactico/simulation-engine", "@tactico/shared"],
 };
 
 module.exports = nextConfig;

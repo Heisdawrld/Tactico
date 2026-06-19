@@ -44,39 +44,57 @@ export class PhysicsEngine {
 
   private update() {
     this.graphics.clear();
-    this.graphics.lineStyle(2, 0xffffff, 1);
     
+    // Draw Pitch Lines
+    this.graphics.lineStyle(2, 0xffffff, 0.3);
+    this.graphics.drawRect(0, 0, 1050, 680);
     this.graphics.moveTo(525, 0);
     this.graphics.lineTo(525, 680);
-    
     this.graphics.drawCircle(525, 340, 91.5);
+    
+    // Penalty areas
+    this.graphics.drawRect(0, 138, 165, 404);
+    this.graphics.drawRect(885, 138, 165, 404);
 
-    this.graphics.beginFill(0xffffff);
     const bodies = Matter.Composite.allBodies(this.world);
     for (const body of bodies) {
       if (body.isStatic) continue;
-      if ((body as any).circleRadius) {
-        this.graphics.drawCircle(body.position.x, body.position.y, (body as any).circleRadius);
+      
+      const color = (body as any).renderColor || 0xffffff;
+      const radius = (body as any).circleRadius;
+      
+      if (radius) {
+        // Draw Shadow
+        this.graphics.beginFill(0x000000, 0.2);
+        this.graphics.drawCircle(body.position.x + 2, body.position.y + 2, radius);
+        this.graphics.endFill();
+
+        // Draw Body
+        this.graphics.beginFill(color);
+        this.graphics.lineStyle(2, 0xffffff, 0.5);
+        this.graphics.drawCircle(body.position.x, body.position.y, radius);
+        this.graphics.endFill();
       }
     }
-    this.graphics.endFill();
   }
 
   public addBall(x: number, y: number) {
-    const ball = Matter.Bodies.circle(x, y, 5, {
+    const ball = Matter.Bodies.circle(x, y, 6, {
       frictionAir: 0.01,
       restitution: 0.8,
       density: 0.001,
     });
+    (ball as any).renderColor = 0xffffff;
     Matter.Composite.add(this.world, ball);
     return ball;
   }
 
-  public addPlayer(x: number, y: number) {
-    const player = Matter.Bodies.circle(x, y, 10, {
+  public addPlayer(x: number, y: number, color: number = 0xffffff) {
+    const player = Matter.Bodies.circle(x, y, 12, {
       frictionAir: 0.05,
       density: 0.002,
     });
+    (player as any).renderColor = color;
     Matter.Composite.add(this.world, player);
     return player;
   }

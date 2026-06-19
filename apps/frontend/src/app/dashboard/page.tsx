@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Club } from "@/types/club";
 import { Player } from "@/types/player";
+import { apiFetch } from "@/lib/api";
 
 export default function DashboardPage() {
   const [selectedClub, setSelectedClub] = useState<Club | null>(null);
@@ -20,16 +21,12 @@ export default function DashboardPage() {
         }
 
         // Fetch all clubs and find the selected one
-        const clubsRes = await fetch("/api/clubs");
-        if (!clubsRes.ok) throw new Error("Failed to fetch clubs");
-        const clubs: Club[] = await clubsRes.json();
+        const clubs: Club[] = await apiFetch("/api/clubs");
         const club = clubs.find((c) => c.id === parseInt(clubId));
         setSelectedClub(club || null);
 
         // Fetch all players and filter by club
-        const playersRes = await fetch("/api/players");
-        if (!playersRes.ok) throw new Error("Failed to fetch players");
-        const players: Player[] = await playersRes.json();
+        const players: Player[] = await apiFetch("/api/players");
         setClubPlayers(players.filter((p) => p.clubId === parseInt(clubId)));
       } catch (error) {
         console.error("Error fetching dashboard data:", error);

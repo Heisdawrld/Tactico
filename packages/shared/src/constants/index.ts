@@ -48,6 +48,46 @@ export const TRANSFER_WINDOWS = {
 
 export type TransferWindow = typeof TRANSFER_WINDOWS[keyof typeof TRANSFER_WINDOWS];
 
+// Additional constants from apps/shared
+export const FORMATIONS = [
+  "4-4-2",
+  "4-3-3",
+  "3-5-2",
+  "4-2-3-1",
+  "5-3-2",
+] as const;
+
+export type Formation = typeof FORMATIONS[number];
+
+export const WEATHER_CONDITIONS = [
+  "clear",
+  "rain",
+  "snow",
+  "windy",
+] as const;
+
+export type Weather = typeof WEATHER_CONDITIONS[number];
+
+export const MATCH_STATUSES = [
+  "scheduled",
+  "in_progress",
+  "completed",
+] as const;
+
+export type MatchStatus = typeof MATCH_STATUSES[number];
+
+export const PRESSING_INTENSITIES = [
+  "low",
+  "medium",
+  "high",
+] as const;
+
+export const PASSING_STYLES = [
+  "short",
+  "long",
+  "mixed",
+] as const;
+
 // Contract Status
 export const CONTRACT_STATUS = {
   ACTIVE: 'ACTIVE',

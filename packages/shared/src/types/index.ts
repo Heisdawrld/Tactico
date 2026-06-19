@@ -2,7 +2,47 @@
  * Shared Type Definitions
  */
 
-import type { Position, TacticalStyle, TransferWindow, Formation } from '../constants';
+import type { Position, TacticalStyle, TransferWindow, Formation, Weather, MatchStatus } from '../constants';
+
+// ... existing types ...
+
+export interface Club {
+  id: number;
+  name: string;
+  country: string;
+  leagueId: number;
+  reputation: number;
+  finances: number;
+  stadiumCapacity: number;
+  trainingFacilities: number;
+  youthAcademy: number;
+  homeKitColor: string;
+  awayKitColor: string;
+}
+
+export interface Match {
+  id: number;
+  homeClubId: number;
+  awayClubId: number;
+  competition: string;
+  matchDate: string;
+  status: MatchStatus;
+  homeScore: number;
+  awayScore: number;
+  weather: Weather;
+}
+
+export interface Tactics {
+  id: number;
+  userId: string;
+  clubId: number;
+  formation: Formation;
+  instructions: {
+    pressingIntensity: "low" | "medium" | "high";
+    passingStyle: "short" | "long" | "mixed";
+    defensiveLine: "low" | "medium" | "high";
+  };
+}
 
 // Base entity with common fields
 export interface BaseEntity {
