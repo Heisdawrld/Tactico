@@ -13,11 +13,13 @@ import {
   AIDecision,
   AIPlayerState,
   AITeamState,
+} from './types';
+import {
   MATCH_CONSTANTS,
   WEATHER_EFFECTS,
   POSITION_MODIFIERS,
   TACTICAL_STYLE_MODIFIERS,
-} from './types';
+} from './constants';
 
 /**
  * SimulationEngine - Core class for managing match simulations

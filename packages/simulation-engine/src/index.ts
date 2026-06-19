@@ -1,34 +1,17 @@
 // TACTICO Simulation Engine
 // Core package for match simulation, player AI, and tactical processing
+//
+// NOTE: The previous version of this file imported from many subdirectories
+// (players/, teams/, match-engine/, event-generator/, physics/, analytics/)
+// that were never created. Those imports caused the package to fail compiling.
+// For now, we only export what actually exists (core/). The other modules
+// should be re-added as they get implemented.
 
-// Re-export all modules
+// Re-export core modules (the only ones that actually exist)
 export * from './core/engine';
 export * from './core/types';
 export * from './core/constants';
 
-export * from './players/player';
-export * from './players/attributes';
-export * from './players/ai';
-
-export * from './teams/team';
-export * from './teams/tactics';
-
-export * from './match-engine/match';
-export * from './match-engine/events';
-export * from './match-engine/simulator';
-
-export * from './event-generator/generator';
-export * from './event-generator/handlers';
-
-export * from './physics/engine';
-export * from './physics/body';
-
-export * from './analytics/stats';
-export * from './analytics/ratings';
-
 // Main exports
 import { SimulationEngine } from './core/engine';
-import { MatchSimulator } from './match-engine/simulator';
-import { EventGenerator } from './event-generator/generator';
-
-export { SimulationEngine, MatchSimulator, EventGenerator };
+export { SimulationEngine };

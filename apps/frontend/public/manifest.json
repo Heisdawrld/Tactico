@@ -1,0 +1,39 @@
+{
+  "name": "TACTICO — Football Intelligence",
+  "short_name": "TACTICO",
+  "description": "The world's first physics-based football manager with real-time 2D match simulation.",
+  "start_url": "/start",
+  "display": "standalone",
+  "background_color": "#0A0A0F",
+  "theme_color": "#FFD700",
+  "orientation": "any",
+  "categories": ["games", "sports", "entertainment"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshot-narrow.png",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ]
+}

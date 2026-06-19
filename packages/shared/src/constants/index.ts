@@ -48,8 +48,8 @@ export const TRANSFER_WINDOWS = {
 
 export type TransferWindow = typeof TRANSFER_WINDOWS[keyof typeof TRANSFER_WINDOWS];
 
-// Additional constants from apps/shared
-export const FORMATIONS = [
+// Formation names (string list)
+export const FORMATION_NAMES = [
   "4-4-2",
   "4-3-3",
   "3-5-2",
@@ -57,7 +57,7 @@ export const FORMATIONS = [
   "5-3-2",
 ] as const;
 
-export type Formation = typeof FORMATIONS[number];
+export type FormationName = typeof FORMATION_NAMES[number];
 
 export const WEATHER_CONDITIONS = [
   "clear",
@@ -121,7 +121,7 @@ export const DEFAULT_VALUES = {
   AGENT_FEE_PERCENTAGE: 5,
 } as const;
 
-// Formation presets
+// Formation presets (position arrays per formation)
 export const FORMATIONS = {
   '4-4-2': ['GK', 'RB', 'CB', 'CB', 'LB', 'RM', 'CM', 'CM', 'LM', 'ST', 'ST'],
   '4-3-3': ['GK', 'RB', 'CB', 'CB', 'LB', 'CDM', 'CM', 'CM', 'RW', 'ST', 'LW'],

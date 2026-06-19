@@ -1,27 +1,31 @@
 // TACTICO World Engine
 // Core package for managing the living football universe
+//
+// The package exposes `WorldEngine` and the core types at the root. Sub-engines
+// are imported directly from their sub-paths to avoid type-name collisions
+// (core/types.ts re-exports many names that also exist in sub-engine type files).
+//
+// Usage:
+//   import { WorldEngine } from '@tactico/world-engine';
+//   import type { WorldState } from '@tactico/world-engine';
+//   import { TimeEngine } from '@tactico/world-engine/time/engine';
+//   import type { TimeState } from '@tactico/world-engine/time/types';
 
-// Re-export all modules
+// Core (engine + types) — flat exports
 export * from './core/engine';
 export * from './core/types';
-export * from './core/constants';
 
-export * from './time/time-engine';
-export * from './time/season-engine';
-
-export * from './training/training-engine';
-export * from './development/development-engine';
-
-export * from './finance/finance-engine';
-export * from './contracts/contract-engine';
-export * from './injuries/injury-engine';
-export * from './morale/morale-engine';
-
-export * from './youth/youth-engine';
-export * from './reputation/reputation-engine';
-export * from './media/media-engine';
+// Re-export sub-engine CLASSES only (no types, to avoid collisions)
+export { TimeEngine } from './time/engine';
+export { TrainingEngine } from './training/engine';
+export { FinanceEngine } from './finance/engine';
+export { ContractEngine } from './contracts/engine';
+export { InjuryEngine } from './injuries/engine';
+export { MoraleEngine } from './morale/engine';
+export { YouthEngine } from './youth/engine';
+export { ReputationEngine } from './reputation/engine';
+export { MediaEngine } from './media/engine';
 
 // Main exports
 import { WorldEngine } from './core/engine';
-
 export { WorldEngine };

@@ -1,22 +1,51 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Manrope, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
-import LiveFeedBar from "@/components/LiveFeedBar";
+import { AppShell } from "@/components/shell/AppShell";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-body",
+  display: "swap",
+});
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-headline",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "TACTICO — The Football Intelligence",
   description: "The world's first physics-based football manager with real-time 2D match simulation.",
   manifest: "/manifest.json",
+  applicationName: "TACTICO",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "TACTICO",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#1A1A1E",
+  userScalable: false,
+  themeColor: "#0A0A0F",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({
@@ -25,23 +54,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.variable} font-display antialiased`}>
-        <div className="flex h-screen overflow-hidden bg-charcoal">
-          {/* Glassmorphism Icon Sidebar */}
-          <Sidebar />
-
-          {/* Main Content Area */}
-          <div className="flex-1 flex flex-col ml-[72px] h-screen">
-            {/* Page Content */}
-            <main className="flex-1 overflow-y-auto overflow-x-hidden">
-              {children}
-            </main>
-
-            {/* Bloomberg-style Live Feed Bar */}
-            <LiveFeedBar />
-          </div>
-        </div>
+    <html lang="en" className={`dark ${inter.variable} ${manrope.variable} ${jetbrainsMono.variable} ${spaceGrotesk.variable}`}>
+      <body className="font-body antialiased">
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
