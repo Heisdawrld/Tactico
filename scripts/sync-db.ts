@@ -309,31 +309,65 @@ async function syncTeams() {
  * - wage (from market value + league reputation)
  *
  * This is the longest-running sync — ~25,000-30,000 players.
+ *
+ * Memory optimization: process teams in batches + write players in chunks.
+ * Resumability: skips teams whose players already have overall_rating set.
  */
 async function syncPlayers() {
   console.log('\n⚽ Syncing PLAYERS...');
 
-  // Get all teams that have a league_id (skip free-agent-only teams)
-  const teamsRes = await db.execute(
-    `SELECT id, name, league_id FROM teams WHERE name IS NOT NULL AND length(name) > 1`
-  );
-  const allTeams = teamsRes.rows;
-  console.log(`  Total teams to process: ${allTeams.length}`);
+  // Paginate the team fetch — Turso times out on large queries
+  const allTeams: any[] = [];
+  const PAGE = 200;
+  let offset = 0;
+  console.log('  Loading teams (paginated)...');
+  while (true) {
+    const r = await db.execute({
+      sql: `SELECT id, name, league_id FROM teams WHERE name IS NOT NULL AND length(name) > 1 ORDER BY id LIMIT ? OFFSET ?`,
+      args: [PAGE, offset],
+    });
+    if (r.rows.length === 0) break;
+    allTeams.push(...r.rows);
+    process.stdout.write(`\r  Loaded ${allTeams.length} teams`);
+    offset += PAGE;
+    if (r.rows.length < PAGE) break;
+  }
+  console.log(`\n  Total teams to process: ${allTeams.length}`);
 
-  // Get league reputations for player generation
+  // Get league reputations (small query, fine)
   const leagueRepRes = await db.execute(`SELECT id, reputation FROM leagues`);
   const leagueRepMap = new Map<number, number>(
     leagueRepRes.rows.map((r: any) => [r.id, r.reputation])
   );
 
-  // Also fetch team reputation (so we can use it as fallback for league_rep)
-  const teamRepRes = await db.execute(`SELECT id, reputation FROM teams`);
-  const teamRepMap = new Map<number, number>(
-    teamRepRes.rows.map((r: any) => [r.id, r.reputation])
-  );
+  // Get team reputations (paginated)
+  const teamRepMap = new Map<number, number>();
+  let repOffset = 0;
+  while (true) {
+    const r = await db.execute({
+      sql: `SELECT id, reputation FROM teams LIMIT ? OFFSET ?`,
+      args: [PAGE, repOffset],
+    });
+    if (r.rows.length === 0) break;
+    for (const row of r.rows) {
+      teamRepMap.set(row.id as number, (row.reputation as number) ?? 50);
+    }
+    repOffset += PAGE;
+    if (r.rows.length < PAGE) break;
+  }
+
+  // RESUMABILITY: skip teams whose players already have overall_rating generated
+  const doneTeamsRes = await db.execute(`
+    SELECT DISTINCT team_id FROM players
+    WHERE team_id IS NOT NULL AND overall_rating IS NOT NULL
+  `);
+  const doneTeamsSet = new Set(doneTeamsRes.rows.map((r: any) => r.team_id));
+  console.log(`  Resuming: ${doneTeamsSet.size} teams already have players synced.`);
 
   let totalPlayers = 0;
   let totalProcessed = 0;
+  let totalSkipped = 0;
+  let totalErrors = 0;
 
   for (const team of allTeams) {
     const teamId = team.id as number;
@@ -342,92 +376,89 @@ async function syncPlayers() {
     const teamRep = teamRepMap.get(teamId) ?? 50;
     const leagueRep = leagueId ? (leagueRepMap.get(leagueId) ?? teamRep) : teamRep;
 
+    // Skip teams that are already synced
+    if (doneTeamsSet.has(teamId)) {
+      totalSkipped++;
+      continue;
+    }
+
     try {
       const players = await fetchAllPages('/players/', { team_id: teamId });
       if (players.length === 0) {
+        totalProcessed++;
         continue;
       }
 
       for (const p of players) {
-        const realData: RealPlayerData = {
-          id: p.id,
-          name: p.name,
-          position: p.position,
-          specific_position: p.specific_position || '',
-          date_of_birth: p.date_of_birth,
-          height_cm: p.height_cm,
-          weight_kg: p.weight_kg,
-          preferred_foot: p.preferred_foot || '',
-          nationality: p.nationality || '',
-          market_value_eur: p.market_value_eur,
-          current_team_id: p.current_team_id ?? teamId,
-        };
+        try {
+          const realData: RealPlayerData = {
+            id: p.id,
+            name: p.name,
+            position: p.position,
+            specific_position: p.specific_position || '',
+            date_of_birth: p.date_of_birth,
+            height_cm: p.height_cm,
+            weight_kg: p.weight_kg,
+            preferred_foot: p.preferred_foot || '',
+            nationality: p.nationality || '',
+            market_value_eur: p.market_value_eur,
+            current_team_id: p.current_team_id ?? teamId,
+          };
 
-        const gameData = generatePlayerGameLayer(realData, leagueRep);
+          const gameData = generatePlayerGameLayer(realData, leagueRep);
 
-        // Split name into first/last
-        const nameParts = (p.name || '').split(' ');
-        const first_name = nameParts[0] || '';
-        const last_name = nameParts.slice(1).join(' ') || first_name;
+          const nameParts = (p.name || '').split(' ');
+          const first_name = nameParts[0] || '';
+          const last_name = nameParts.slice(1).join(' ') || first_name;
 
-        await db.execute({
-          sql: `INSERT INTO players
-                (id, name, first_name, last_name, nationality, nationality_code, date_of_birth,
-                 age, height, weight, position, secondary_positions, foot, team_id, league_id,
-                 shirt_number, market_value, wage, contract_expires, photo,
-                 overall_rating, morale, fatigue, sharpness, injury, attributes,
-                 appearances, goals, assists, clean_sheets, average_rating)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                  name=excluded.name, first_name=excluded.first_name, last_name=excluded.last_name,
-                  nationality=excluded.nationality, date_of_birth=excluded.date_of_birth,
-                  position=excluded.position, team_id=excluded.team_id, league_id=excluded.league_id,
-                  shirt_number=excluded.shirt_number, market_value=excluded.market_value,
-                  contract_expires=excluded.contract_expires,
-                  overall_rating=excluded.overall_rating, attributes=excluded.attributes,
-                  wage=excluded.wage`,
-          args: [
-            p.id,
-            p.name,
-            first_name,
-            last_name,
-            p.nationality || null,
-            null, // nationality_code — derive later
-            p.date_of_birth || null,
-            null, // age (computed on read)
-            p.height_cm || null,
-            p.weight_kg || null,
-            p.specific_position || p.position || null,
-            null, // secondary_positions
-            p.preferred_foot || null,
-            teamId,
-            leagueId,
-            p.jersey_number || null,
-            p.market_value_eur || null,
-            gameData.wage,
-            p.contract_until || null,
-            null, // photo
-            gameData.overall_rating,
-            70, // morale (default = content)
-            0,  // fatigue (default = rested)
-            80, // sharpness (default = match-fit)
-            null, // injury
-            JSON.stringify(gameData.attributes),
-            0, 0, 0, 0, 0, // appearances, goals, assists, clean_sheets, average_rating
-          ],
-        });
-        totalPlayers++;
+          await db.execute({
+            sql: `INSERT INTO players
+                  (id, name, first_name, last_name, nationality, nationality_code, date_of_birth,
+                   age, height, weight, position, secondary_positions, foot, team_id, league_id,
+                   shirt_number, market_value, wage, contract_expires, photo,
+                   overall_rating, morale, fatigue, sharpness, injury, attributes,
+                   appearances, goals, assists, clean_sheets, average_rating)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  ON CONFLICT(id) DO UPDATE SET
+                    name=excluded.name, first_name=excluded.first_name, last_name=excluded.last_name,
+                    nationality=excluded.nationality, date_of_birth=excluded.date_of_birth,
+                    position=excluded.position, team_id=excluded.team_id, league_id=excluded.league_id,
+                    shirt_number=excluded.shirt_number, market_value=excluded.market_value,
+                    contract_expires=excluded.contract_expires,
+                    overall_rating=excluded.overall_rating, attributes=excluded.attributes,
+                    wage=excluded.wage`,
+            args: [
+              p.id, p.name, first_name, last_name,
+              p.nationality || null, null, p.date_of_birth || null,
+              null, p.height_cm || null, p.weight_kg || null,
+              p.specific_position || p.position || null, null,
+              p.preferred_foot || null, teamId, leagueId,
+              p.jersey_number || null, p.market_value_eur || null,
+              gameData.wage, p.contract_until || null, null,
+              gameData.overall_rating, 70, 0, 80, null,
+              JSON.stringify(gameData.attributes),
+              0, 0, 0, 0, 0,
+            ],
+          });
+          totalPlayers++;
+        } catch (e: any) {
+          totalErrors++;
+          if (totalErrors < 10) {
+            console.log(`  ⚠️  Player ${p.id} (${p.name}) failed: ${e.message}`);
+          }
+        }
       }
       totalProcessed++;
-      if (totalProcessed % 50 === 0) {
-        console.log(`  Processed ${totalProcessed}/${allTeams.length} teams, ${totalPlayers} players so far`);
+      if (totalProcessed % 25 === 0) {
+        console.log(`  Processed ${totalProcessed}/${allTeams.length} teams, ${totalPlayers} players so far (${totalSkipped} skipped, ${totalErrors} errors)`);
       }
       await sleep(RATE_LIMIT_DELAY_MS);
     } catch (e: any) {
+      totalErrors++;
       console.log(`  ⚠️  Team ${teamName} (id=${teamId}) failed: ${e.message}`);
     }
   }
-  console.log(`✅ Synced ${totalPlayers} players from ${totalProcessed} teams.`);
+  console.log(`✅ Synced ${totalPlayers} players from ${totalProcessed} teams (${totalSkipped} skipped, ${totalErrors} errors).`);
 
   // After all players synced, update each team's market_value (sum of squad)
   console.log('\n💰 Updating team market values...');

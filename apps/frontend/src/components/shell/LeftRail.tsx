@@ -8,7 +8,7 @@ import { NAV_ITEMS } from '@/lib/navigation';
 import { useAppStore } from '@/lib/store';
 import { playSfx } from '@/lib/audio';
 import { cn } from '@/lib/utils';
-import { Trophy } from 'lucide-react';
+import { TacticoLogo } from '@/components/ui/TacticoLogo';
 
 /**
  * Left Rail — primary navigation.
@@ -51,9 +51,7 @@ export function LeftRail() {
           className="flex items-center gap-3 text-gold-300 hover:text-gold-200 transition-colors"
           onClick={() => playSfx('click')}
         >
-          <div className="w-9 h-9 rounded-md bg-gradient-to-br from-gold-300 to-gold-500 flex items-center justify-center shadow-gold">
-            <Trophy className="w-5 h-5 text-black" strokeWidth={2.5} />
-          </div>
+          <TacticoLogo size={36} variant="mark" />
           <AnimatePresence>
             {expanded && (
               <motion.div
