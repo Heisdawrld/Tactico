@@ -1,5 +1,7 @@
-import MatchPitch from '@/components/match/MatchPitch';
+'use client';
 
-export default function MatchSimulationPage() {
-  return <MatchPitch />;
+import MatchSimulation from '@/components/match/MatchSimulation';
+
+export default function MatchPage() {
+  return <MatchSimulation />;
 }
