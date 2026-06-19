@@ -1,31 +1,12 @@
 services:
-  # Frontend Application (Next.js + PixiJS)
+  # Tactico Application (Combined Frontend + Backend)
   - type: web
-    name: tactico-frontend
+    name: tactico
     env: node
     region: oregon
     plan: starter
-    buildCommand: pnpm install && pnpm turbo run build --filter=@tactico/frontend
-    startCommand: pnpm --filter @tactico/frontend start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: NEXT_PUBLIC_API_URL
-        sync: false
-        # User will need to set this to the Render URL of tactico-backend
-      - key: NEXTAUTH_URL
-        sync: false
-      - key: NEXTAUTH_SECRET
-        generateValue: true
-
-  # Backend API Service (Next.js API + Socket.io)
-  - type: web
-    name: tactico-backend
-    env: node
-    region: oregon
-    plan: starter
-    buildCommand: pnpm install && pnpm turbo run build --filter=tactico-backend
-    startCommand: pnpm --filter tactico-backend start
+    buildCommand: pnpm install && pnpm turbo run build --filter=@tactico/app
+    startCommand: pnpm --filter @tactico/app start
     envVars:
       - key: NODE_ENV
         value: production

@@ -1,6 +1,6 @@
 {
-  "name": "@tactico/frontend",
-  "version": "0.2.0",
+  "name": "@tactico/app",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -20,13 +20,22 @@
     "tailwind-merge": "^2.2.0",
     "zustand": "^4.5.0",
     "@tactico/simulation-engine": "workspace:*",
-    "@tactico/shared": "workspace:*"
+    "@tactico/shared": "workspace:*",
+    "@tactico/database": "workspace:*",
+    "socket.io": "^4.7.0",
+    "cors": "^2.8.5",
+    "@libsql/client": "^0.4.0",
+    "next-auth": "beta",
+    "@auth/core": "^0.30.0",
+    "drizzle-orm": "^0.30.0",
+    "@auth/drizzle-adapter": "^1.0.0"
   },
   "devDependencies": {
     "@types/matter-js": "^0.19.7",
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
+    "@types/cors": "^2.8.17",
     "autoprefixer": "^10.4.17",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1",
