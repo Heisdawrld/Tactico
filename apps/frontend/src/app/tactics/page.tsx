@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Club } from "@/types/club";
 import { Player } from "@/types/player";
 import { Formation, Tactics, defaultTactics, formationPositions } from "@/types/tactics";
-import FormationEditor from "@/components/FormationEditor";
+// import FormationEditor from "@/components/FormationEditor";
 
 interface LineupPosition {
   player: Player | null;
@@ -117,11 +117,12 @@ export default function TacticsPage() {
         {/* Formation Editor */}
         <div className="lg:col-span-2 bg-graphite/50 backdrop-blur-sm p-6 rounded-xl border border-graphite/30">
           <h2 className="text-2xl font-bold text-offwhite mb-6">Formation Editor</h2>
-          <FormationEditor
+          {/* <FormationEditor
             formation={selectedFormation}
             lineup={lineup}
             onPlayerAssign={handlePlayerAssign}
-          />
+          /> */}
+          <p className="text-offwhite/50">Formation editor coming soon!</p>
         </div>
 
         {/* Tactics Panel */}
