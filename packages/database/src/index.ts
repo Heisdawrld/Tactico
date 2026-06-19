@@ -56,10 +56,10 @@ export async function query<T = any>(
  */
 export async function run(sql: string, args?: any[]): Promise<{ changes: number; lastInsertRowid: number }> {
   const db = getDbClient();
-  const result: ResultSet = await db.execute({ sql, args: args || [] });
-  
+  const result = await db.execute({ sql, args: args || [] });
+
   return {
-    changes: result.affectedRowCount || 0,
+    changes: result.rowsAffected || 0,
     lastInsertRowid: Number(result.lastInsertRowid || 0),
   };
 }

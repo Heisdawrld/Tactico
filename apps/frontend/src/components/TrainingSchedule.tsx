@@ -66,22 +66,24 @@ export default function TrainingScheduleComponent({
       <div className="mb-6">
         <p className="section-header">Team Training</p>
         <div className="space-y-3">
-          {(Object.keys(schedule) as TrainingCategory[]).map((category) => (
-            <div key={category} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
+          {(Object.keys(schedule) as (keyof TrainingSchedule)[]).map((key) => (
+            <div key={key} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded bg-gold/20 flex items-center justify-center text-[10px] font-bold text-gold">{categoryIcons[category]}</span>
-                  <span className="text-sm font-medium text-offwhite">{category}</span>
+                  <span className="w-6 h-6 rounded bg-gold/20 flex items-center justify-center text-[10px] font-bold text-gold">
+                    {key.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="text-sm font-medium text-offwhite capitalize">{key}</span>
                 </div>
-                <span className="text-[10px] text-offwhite-500">+{trainingEffects[schedule[category]]}/wk</span>
+                <span className="text-[10px] text-offwhite-500">+{trainingEffects[schedule[key]]}/wk</span>
               </div>
               <div className="flex items-center gap-1.5">
                 {[1, 2, 3, 4, 5].map((intensity) => (
                   <button
                     key={intensity}
-                    onClick={() => handleScheduleChange(category, intensity as TrainingIntensity)}
+                    onClick={() => handleScheduleChange(key.charAt(0).toUpperCase() as TrainingCategory, intensity as TrainingIntensity)}
                     className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all duration-150 ${
-                      schedule[category] === intensity ? "bg-gold/20 text-gold ring-1 ring-gold/30" : "bg-white/[0.04] text-offwhite-500 hover:bg-white/[0.06]"
+                      schedule[key] === intensity ? "bg-gold/20 text-gold ring-1 ring-gold/30" : "bg-white/[0.04] text-offwhite-500 hover:bg-white/[0.06]"
                     }`}
                   >
                     {intensity}

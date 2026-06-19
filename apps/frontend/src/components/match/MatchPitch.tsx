@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { PhysicsEngine } from './PhysicsEngine';
-import { SimulationEngine } from '@tactico/simulation-engine';
 
 export default function MatchPitch() {
   const containerRef = useRef<HTMLDivElement>(null);

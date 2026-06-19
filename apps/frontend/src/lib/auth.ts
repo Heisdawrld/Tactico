@@ -5,7 +5,7 @@ import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { drizzle } from "drizzle-orm/libsql";
 import { getDbClient } from "@tactico/database";
 
-const db = drizzle({ client: getDbClient() });
+const db = drizzle(getDbClient());
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,

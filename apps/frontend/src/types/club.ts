@@ -8,6 +8,8 @@ export interface Club {
   stadiumCapacity: number;
   homeKitColor: string;
   awayKitColor: string;
+  trainingFacilities: number;
+  youthAcademy: number;
 }
 
 // Static data for clubs (no database yet)
@@ -22,6 +24,8 @@ export const clubs: Club[] = [
     stadiumCapacity: 53400,
     homeKitColor: "#6CABDD",
     awayKitColor: "#FFFFFF",
+    trainingFacilities: 5,
+    youthAcademy: 5,
   },
   {
     id: 2,
@@ -33,6 +37,8 @@ export const clubs: Club[] = [
     stadiumCapacity: 81044,
     homeKitColor: "#FFFFFF",
     awayKitColor: "#000000",
+    trainingFacilities: 5,
+    youthAcademy: 5,
   },
   {
     id: 3,
@@ -44,17 +50,21 @@ export const clubs: Club[] = [
     stadiumCapacity: 53287,
     homeKitColor: "#C8102E",
     awayKitColor: "#FFFFFF",
+    trainingFacilities: 4,
+    youthAcademy: 4,
   },
   {
     id: 4,
     name: "Barcelona",
     country: "Spain",
     league: "La Liga",
-    reputation: 97,
-    finances: 140000000,
+    reputation: 92,
+    finances: 40000000,
     stadiumCapacity: 99354,
-    homeKitColor: "#A50044",
-    awayKitColor: "#FDB813",
+    homeKitColor: "#004D98",
+    awayKitColor: "#FFFFFF",
+    trainingFacilities: 4,
+    youthAcademy: 5,
   },
   {
     id: 5,
@@ -66,6 +76,8 @@ export const clubs: Club[] = [
     stadiumCapacity: 74140,
     homeKitColor: "#DA291C",
     awayKitColor: "#FFFFFF",
+    trainingFacilities: 4,
+    youthAcademy: 4,
   },
   {
     id: 6,
@@ -77,6 +89,8 @@ export const clubs: Club[] = [
     stadiumCapacity: 75000,
     homeKitColor: "#FC2026",
     awayKitColor: "#FFFFFF",
+    trainingFacilities: 5,
+    youthAcademy: 5,
   },
   {
     id: 7,
@@ -88,6 +102,8 @@ export const clubs: Club[] = [
     stadiumCapacity: 47929,
     homeKitColor: "#004170",
     awayKitColor: "#FFFFFF",
+    trainingFacilities: 4,
+    youthAcademy: 4,
   },
   {
     id: 8,
@@ -99,6 +115,8 @@ export const clubs: Club[] = [
     stadiumCapacity: 41507,
     homeKitColor: "#000000",
     awayKitColor: "#FFFFFF",
+    trainingFacilities: 3,
+    youthAcademy: 4,
   },
   {
     id: 9,
@@ -110,6 +128,8 @@ export const clubs: Club[] = [
     stadiumCapacity: 60260,
     homeKitColor: "#EF0107",
     awayKitColor: "#FFFFFF",
+    trainingFacilities: 4,
+    youthAcademy: 4,
   },
   {
     id: 10,
@@ -121,5 +141,7 @@ export const clubs: Club[] = [
     stadiumCapacity: 75817,
     homeKitColor: "#DA291C",
     awayKitColor: "#FFFFFF",
+    trainingFacilities: 3,
+    youthAcademy: 4,
   },
 ];
