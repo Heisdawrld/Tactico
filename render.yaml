@@ -5,8 +5,8 @@ services:
     env: node
     region: oregon
     plan: starter
-    buildCommand: pnpm install && pnpm turbo run build --filter=@tactico/app
-    startCommand: pnpm --filter @tactico/app start
+    buildCommand: cd apps/frontend && pnpm install && pnpm build
+    startCommand: cd apps/frontend && pnpm start
     envVars:
       - key: NODE_ENV
         value: production
