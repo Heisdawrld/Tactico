@@ -1,37 +1,85 @@
 import { NextResponse } from "next/server";
 import { db } from "@tactico/database";
 
-export async function GET() {
+/**
+ * GET /api/clubs
+ *
+ * Returns all teams from the real Turso DB.
+ * Supports optional query params:
+ *   ?league_id=N   - filter by league
+ *   ?limit=N       - limit results (default 50, max 500)
+ *   ?search=STR    - search by name
+ *
+ * Maps real DB schema (teams table) → frontend Club interface.
+ */
+export async function GET(request: Request) {
   try {
-    let rows = await db.query("SELECT * FROM clubs LIMIT 50");
-    
-    // If database is empty, return some sample data for demonstration
-    if (rows.length === 0) {
-      rows = [
-        { id: 1, name: "Manchester City", nation_code: "ENG", reputation: 95, balance: 100000000, stadium_capacity: 53400, home_kit_color: "#6CABDD", away_kit_color: "#FFFFFF" },
-        { id: 2, name: "Real Madrid", nation_code: "ESP", reputation: 98, balance: 150000000, stadium_capacity: 81044, home_kit_color: "#FFFFFF", away_kit_color: "#000000" },
-        { id: 3, name: "Liverpool", nation_code: "ENG", reputation: 88, balance: 80000000, stadium_capacity: 53287, home_kit_color: "#C8102E", away_kit_color: "#FFFFFF" },
-        { id: 4, name: "Barcelona", nation_code: "ESP", reputation: 97, balance: 140000000, stadium_capacity: 99354, home_kit_color: "#A50044", away_kit_color: "#FDB813" },
-        { id: 5, name: "Manchester United", nation_code: "ENG", reputation: 90, balance: 50000000, stadium_capacity: 74140, home_kit_color: "#DA291C", away_kit_color: "#FFFFFF" },
-      ];
+    const { searchParams } = new URL(request.url);
+    const leagueId = searchParams.get("league_id");
+    const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 500);
+    const search = searchParams.get("search");
+
+    // Build query
+    const conditions: string[] = ["t.name IS NOT NULL", "length(t.name) > 1"];
+    const args: any[] = [];
+
+    if (leagueId) {
+      conditions.push("t.league_id = ?");
+      args.push(parseInt(leagueId));
     }
-    
-    // Map database rows to frontend Club interface
+    if (search) {
+      conditions.push("(t.name LIKE ? OR t.short_name LIKE ?)");
+      args.push(`%${search}%`, `%${search}%`);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const sql = `
+      SELECT t.*,
+             l.name AS league_name,
+             l.reputation AS league_reputation
+      FROM teams t
+      LEFT JOIN leagues l ON t.league_id = l.id
+      ${where}
+      ORDER BY
+        CASE WHEN t.reputation IS NULL THEN 0 ELSE 1 END DESC,
+        t.reputation DESC NULLS LAST,
+        t.name ASC
+      LIMIT ?
+    `;
+    args.push(limit);
+
+    const rows = await db.query(sql, args);
+
+    // Map DB rows → frontend Club interface
     const clubs = rows.map((row: any) => ({
       id: row.id,
       name: row.name,
-      country: row.nation_code, // Simplified: using nation_code as country
-      league: "Unknown", // TODO: Join with competitions table
-      reputation: row.reputation,
-      finances: row.balance,
-      stadiumCapacity: row.stadium_capacity,
-      homeKitColor: row.home_kit_color,
-      awayKitColor: row.away_kit_color,
+      shortName: row.short_name || row.name,
+      country: row.country || "Unknown",
+      league: row.league_name || "Unaffiliated",
+      leagueId: row.league_id,
+      leagueReputation: row.league_reputation,
+      reputation: row.reputation ?? 50,
+      finances: row.balance ?? 0,
+      balance: row.balance ?? 0,
+      wageBudget: row.wage_budget ?? 0,
+      transferBudget: row.transfer_budget ?? 0,
+      marketValue: row.market_value ?? 0,
+      stadiumCapacity: row.stadium_capacity ?? 0,
+      stadium: row.stadium || null,
+      homeKitColor: row.primary_color || "#FFD700",
+      awayKitColor: row.secondary_color || "#0A0A0F",
+      trainingFacilities: row.training_facilities ?? 3,
+      youthAcademy: row.youth_academy ?? 3,
+      coach: row.coach || null,
     }));
 
     return NextResponse.json(clubs);
   } catch (error) {
     console.error("Failed to fetch clubs:", error);
-    return NextResponse.json({ error: "Failed to fetch clubs" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch clubs", details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
   }
 }
