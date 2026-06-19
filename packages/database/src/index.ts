@@ -49,16 +49,7 @@ export async function query<T = any>(
   });
 }
 
-/**
- * DB helper object
- */
-export const db = {
-  query,
-  run,
-  execute: async (sql: string, args?: any[]) => {
-    return getDbClient().execute({ sql, args: args || [] });
-  }
-};
+
 
 /**
  * Execute a single statement (INSERT, UPDATE, DELETE)
@@ -141,6 +132,9 @@ export const db = {
   initializeDatabase,
   closeDatabase,
   getClient: getDbClient,
+  execute: async (sql: string, args?: any[]) => {
+    return getDbClient().execute({ sql, args: args || [] });
+  }
 };
 
 // Export client directly for advanced usage
