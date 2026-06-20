@@ -265,7 +265,7 @@ export default function ClubSelector() {
       ) : (
         <motion.div
           layout
-          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-[60vh] overflow-y-auto scroll-region pr-1"
+          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-2.5 max-h-[55vh] sm:max-h-[60vh] overflow-y-auto scroll-region pr-1"
         >
           <AnimatePresence>
             {filtered.slice(0, 60).map((club, idx) => {

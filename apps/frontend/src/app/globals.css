@@ -906,7 +906,7 @@ img, video {
   .container-app {
     width: 100%;
     margin: 0 auto;
-    padding: 0 1.5rem;
+    padding: 0 1rem;
   }
   @media (min-width: 1024px) {
     .container-app { padding: 0 2rem; max-width: 1600px; }
@@ -922,5 +922,178 @@ img, video {
   }
   .no-scrollbar::-webkit-scrollbar {
     display: none;
+  }
+}
+
+/* ============================================================
+   MOBILE / PWA LAYOUT — PORTRAIT + LANDSCAPE
+   ============================================================ */
+
+/* Safe area insets for notched phones (iPhone X+) */
+@layer utilities {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .safe-area-left {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+  .safe-area-right {
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+  .safe-area-all {
+    padding:
+      env(safe-area-inset-top, 0px)
+      env(safe-area-inset-right, 0px)
+      env(safe-area-inset-bottom, 0px)
+      env(safe-area-inset-left, 0px);
+  }
+}
+
+/* ---------- PORTRAIT MOBILE (< 768px) ---------- */
+@media (max-width: 767px) {
+  /* Tighter spacing on mobile */
+  .container-app {
+    padding: 0 1rem;
+  }
+
+  /* Pages should account for topbar (56px) + tab bar (64px) */
+  .page-mobile {
+    padding-top: 0;
+    padding-bottom: calc(var(--mobile-tabbar-height) + env(safe-area-inset-bottom, 0px) + 8px);
+  }
+
+  /* Hide right panel on mobile (already done via lg:flex) */
+  /* Reduce hero sizes on small screens */
+  h1 { font-size: var(--text-3xl); }
+  h2 { font-size: var(--text-2xl); }
+}
+
+/* ---------- LANDSCAPE MOBILE (height < 500px, width >= 568px) ---------- */
+/* This catches iPhones in landscape, small Androids, etc. */
+@media (orientation: landscape) and (max-height: 500px) {
+  /* Compact topbar in landscape */
+  :root {
+    --topbar-height: 44px;
+    --mobile-tabbar-height: 48px;
+    --livefeed-height: 28px;
+  }
+
+  /* Shrink hero text in landscape */
+  h1 { font-size: var(--text-2xl) !important; }
+  h2 { font-size: var(--text-xl) !important; }
+  h3 { font-size: var(--text-lg) !important; }
+
+  /* Compact spacing everywhere */
+  .container-app {
+    padding: 0 1rem;
+  }
+
+  /* Page content fills available height (no big paddings) */
+  .page-mobile {
+    padding-top: 0.5rem;
+    padding-bottom: calc(var(--mobile-tabbar-height) + env(safe-area-inset-bottom, 0px) + 4px);
+  }
+
+  /* Make the start page hero more compact in landscape */
+  .start-hero-compact {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+  .start-hero-compact .tactico-logo {
+    transform: scale(0.7);
+  }
+
+  /* Mobile tab bar shorter in landscape */
+  .mobile-tabbar-compact a {
+    padding: 4px 0 !important;
+  }
+  .mobile-tabbar-compact a span:last-child {
+    font-size: 8px !important;
+  }
+  .mobile-tabbar-compact a svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  /* Cards have less padding in landscape */
+  .game-card,
+  .card-content {
+    padding: 0.75rem !important;
+  }
+
+  /* Stat blocks more compact */
+  .stat-block-compact {
+    padding: 0.5rem !important;
+  }
+  .stat-block-compact > * + * {
+    margin-top: 0 !important;
+  }
+}
+
+/* ---------- VERY SMALL LANDSCAPE (iPhone SE landscape, etc.) ---------- */
+@media (orientation: landscape) and (max-height: 400px) {
+  :root {
+    --topbar-height: 40px;
+    --mobile-tabbar-height: 44px;
+  }
+
+  /* Hide the tagline under TACTICO in landscape SE */
+  .start-tagline {
+    display: none;
+  }
+
+  /* Hide feature pills in landscape SE — show only logo + club selector */
+  .start-feature-pills {
+    display: none;
+  }
+}
+
+/* ---------- TABLET (768px - 1023px) ---------- */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Slightly larger touch targets on tablet */
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* ---------- TOUCH TARGETS (min 44px for accessibility) ---------- */
+@layer utilities {
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* ---------- PREVENT OVERSCROLL BOUNCE ON IOS ---------- */
+html, body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ---------- PREVENT TEXT SIZE ADJUST ON IOS ROTATION ---------- */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* ---------- PWA STANDALONE MODE TWEAKS ---------- */
+@media (display-mode: standalone) {
+  /* When running as PWA, account for safe areas */
+  body {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  /* Hide the livefeed bar in PWA landscape — saves vertical space */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .livefeed-bar {
+      display: none !important;
+    }
   }
 }

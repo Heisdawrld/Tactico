@@ -91,7 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-base">
+    <div className="flex h-screen overflow-hidden bg-surface-base safe-area-all">
       {/* Left rail — fixed */}
       <LeftRail />
 
@@ -112,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                className="min-h-full"
+                className="min-h-full page-mobile"
               >
                 {children}
               </motion.div>
@@ -124,14 +124,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Bloomberg ticker — hidden on mobile */}
-        <LiveFeedBar />
+        <div className="livefeed-bar hidden md:block">
+          <LiveFeedBar />
+        </div>
       </div>
 
       {/* Mobile tab bar */}
       <MobileTabBar />
 
       {/* Mobile bottom-padding spacer so content isn't hidden behind tab bar */}
-      <div className="md:hidden h-[var(--mobile-tabbar-height)] shrink-0" />
+      <div className="md:hidden h-[var(--mobile-tabbar-height)] shrink-0 safe-area-bottom" />
     </div>
   );
 }

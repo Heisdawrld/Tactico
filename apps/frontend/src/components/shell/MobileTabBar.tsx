@@ -21,6 +21,7 @@ export function MobileTabBar() {
   return (
     <nav
       className="
+        mobile-tabbar-compact
         md:hidden fixed bottom-0 left-0 right-0 z-fixed
         h-[var(--mobile-tabbar-height)]
         glass-heavy border-t border-white/5
