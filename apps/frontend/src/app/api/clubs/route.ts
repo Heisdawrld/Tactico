@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const leagueId = searchParams.get("league_id");
-    const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 500);
+    const limit = Math.min(parseInt(searchParams.get("limit") || "30"), 500);
     const search = searchParams.get("search");
 
     // Build query

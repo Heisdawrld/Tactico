@@ -3,37 +3,63 @@
   "short_name": "TACTICO",
   "description": "The world's first physics-based football manager with real-time 2D match simulation.",
   "start_url": "/start",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#0A0A0F",
   "theme_color": "#FFD700",
-  "orientation": "any",
+  "orientation": "portrait-primary",
+  "dir": "ltr",
+  "lang": "en",
   "categories": ["games", "sports", "entertainment"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshot-wide.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
+      "purpose": "any"
     },
     {
-      "src": "/screenshot-narrow.png",
-      "sizes": "720x1280",
+      "src": "/icon-512.png",
+      "sizes": "512x512",
       "type": "image/png",
-      "form_factor": "narrow"
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Home",
+      "description": "View club dashboard",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Squad",
+      "short_name": "Squad",
+      "description": "View player roster",
+      "url": "/squad",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Match Day",
+      "short_name": "Live",
+      "description": "Play next match",
+      "url": "/match-simulation",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

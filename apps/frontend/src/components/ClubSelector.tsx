@@ -3,15 +3,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Club } from '@/types/club';
-import { apiFetch } from '@/lib/api';
+import { Club, clubs as FALLBACK_CLUBS } from '@/types/club';
 import { useAppStore } from '@/lib/store';
 import { playSfx } from '@/lib/audio';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { RatingBadge } from '@/components/ui/Stat';
-import { Search, X, Filter, Star, Wallet, Building2, ChevronRight, Trophy } from 'lucide-react';
+import { Search, X, Filter, Star, Wallet, Building2, ChevronRight, Trophy, RefreshCw, AlertTriangle } from 'lucide-react';
 
 /**
  * Premium Club Selector
@@ -23,6 +22,8 @@ import { Search, X, Filter, Star, Wallet, Building2, ChevronRight, Trophy } from
  * - Premium club cards with kit colors, badges, stats
  * - Cinematic hover + selection animations
  * - "Start Career" CTA confirms selection
+ * - 10s timeout + auto-retry on slow API
+ * - Falls back to hardcoded top clubs if API fails entirely
  */
 export default function ClubSelector() {
   const [clubs, setClubs] = useState<Club[]>([]);
@@ -30,6 +31,7 @@ export default function ClubSelector() {
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [search, setSearch] = useState('');
   const [leagueFilter, setLeagueFilter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'reputation' | 'balance' | 'stadiumCapacity' | 'marketValue'>('reputation');
@@ -37,19 +39,63 @@ export default function ClubSelector() {
   const router = useRouter();
   const selectClub = useAppStore((s) => s.selectClub);
 
+  // Fetch with timeout + retry
+  const fetchClubs = async (attempt: number = 0): Promise<void> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Use a smaller limit on first load for faster initial render
+      const limit = attempt === 0 ? 100 : 500;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12_000); // 12s timeout
+
+      const response = await fetch(`/api/clubs?limit=${limit}`, {
+        signal: controller.signal,
+        headers: { 'Accept': 'application/json' },
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data: Club[] = await response.json();
+
+      if (!Array.isArray(data) || data.length === 0) {
+        throw new Error('No clubs returned from server');
+      }
+
+      setClubs(data);
+      setRetryCount(0);
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        console.warn('Club fetch timed out (12s)');
+      } else {
+        console.error('Club fetch failed:', err);
+      }
+
+      // Retry up to 2 times
+      if (attempt < 2) {
+        console.log(`Retrying club fetch (attempt ${attempt + 1}/2) in 1.5s...`);
+        setTimeout(() => {
+          setRetryCount(attempt + 1);
+          fetchClubs(attempt + 1);
+        }, 1500);
+        return;
+      }
+
+      // Final fallback: use hardcoded clubs so the user can still play
+      console.warn('All fetch attempts failed. Using fallback clubs.');
+      setClubs(FALLBACK_CLUBS);
+      setError('Live data unavailable — showing top European clubs. You can still start a career.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    apiFetch<Club[]>('/api/clubs?limit=500')
-      .then((data) => {
-        setClubs(data);
-        if (data.length === 0) {
-          setError('No clubs found. Run `pnpm sync:teams` to populate the database.');
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to fetch clubs:', err);
-        setError('Failed to load clubs. Please try again.');
-      })
-      .finally(() => setLoading(false));
+    fetchClubs();
   }, []);
 
   // Derive unique leagues from clubs
@@ -101,32 +147,40 @@ export default function ClubSelector() {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <div className="w-12 h-12 rounded-full border-2 border-gold-soft border-t-gold-300 animate-spin" />
-        <p className="text-xs text-tertiary-c font-mono tracking-widest">LOADING CLUBS…</p>
+        <p className="text-xs text-tertiary-c font-mono tracking-widest">
+          {retryCount > 0 ? `RETRYING… (${retryCount}/2)` : 'LOADING CLUBS…'}
+        </p>
+        {retryCount > 0 && (
+          <p className="text-[10px] text-quaternary-c">Slow connection — Render cold start detected</p>
+        )}
       </div>
     );
   }
 
-  // ---------- ERROR STATE ----------
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
-        <div className="w-14 h-14 rounded-full bg-danger-soft flex items-center justify-center">
-          <X className="w-7 h-7 text-danger" />
-        </div>
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-primary-c">{error}</p>
-          <p className="text-xs text-tertiary-c">Check the database connection and try again.</p>
-        </div>
-        <Button variant="secondary" size="sm" onClick={() => window.location.reload()}>
-          Retry
-        </Button>
-      </div>
-    );
-  }
-
-  // ---------- MAIN RENDER ----------
+  // ---------- MAIN RENDER (with optional error banner) ----------
   return (
     <div className="space-y-5">
+      {/* Error banner (non-blocking) */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-start gap-2 px-3 py-2 rounded-md bg-warning/10 border border-warning/25 text-warning text-xs"
+        >
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-medium">{error}</p>
+          </div>
+          <button
+            onClick={() => fetchClubs(0)}
+            className="shrink-0 p-1 rounded hover:bg-warning/15 transition-colors"
+            title="Retry"
+          >
+            <RefreshCw className="w-3 h-3" />
+          </button>
+        </motion.div>
+      )}
+
       {/* ---------- SEARCH + FILTERS ---------- */}
       <div className="space-y-3">
         {/* Search bar */}
