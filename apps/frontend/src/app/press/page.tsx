@@ -1,201 +1,219 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { clubs } from "@/types/club";
-import { Club } from "@/types/club";
+import { useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAppStore } from '@/lib/store';
+import { playRawClick } from '@/lib/audio';
+import { cn } from '@/lib/utils';
+import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/motion';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { ProgressBar } from '@/components/ui/Stat';
+import { getOfflineClub, getOfflineNews, OFFLINE_CLUBS } from '@/lib/game-data';
+import { Mic, Newspaper, TrendingUp, TrendingDown, Quote, ChevronRight, Star } from 'lucide-react';
 
-interface PressQuestion {
-  id: number;
-  question: string;
-  options: { text: string; effects: { morale: number; fanSentiment: number; opponentBoost?: number; description: string } }[];
-}
-
-const pressQuestions: PressQuestion[] = [
+const PRESS_QUESTIONS = [
   {
-    id: 1, question: "How do you feel about your team's chances in tomorrow's match?",
+    id: 1,
+    question: 'How are you feeling about the upcoming match?',
     options: [
-      { text: "We're fully prepared and will win.", effects: { morale: 5, fanSentiment: 5, description: "Boosts confidence and excitement." } },
-      { text: "It will be tough, but we're ready.", effects: { morale: 2, fanSentiment: 3, description: "Balanced, slight boost." } },
-      { text: "We're the underdogs, but we'll fight.", effects: { morale: -2, fanSentiment: 1, opponentBoost: 3, description: "Honest, opponent may underestimate you." } },
-      { text: "No predictions from me.", effects: { morale: 0, fanSentiment: -2, description: "Neutral, fans want confidence." } },
+      { text: 'Confident. The squad is ready.', morale: +5, fans: +3, style: 'positive' },
+      { text: 'Cautiously optimistic. We respect our opponents.', morale: +2, fans: +1, style: 'diplomatic' },
+      { text: 'We will dominate. No doubt about it.', morale: +3, fans: +5, style: 'aggressive' },
+      { text: 'No comment. We focus on the pitch.', morale: -2, fans: -3, style: 'evasive' },
     ],
   },
   {
-    id: 2, question: "What's your strategy for stopping their star player?",
+    id: 2,
+    question: 'Your star striker has been linked with a transfer. What is your response?',
     options: [
-      { text: "We have a special plan to mark him out.", effects: { morale: 3, fanSentiment: 4, opponentBoost: 5, description: "Motivates team, opponent cautious." } },
-      { text: "Focus on our own game, not individuals.", effects: { morale: 2, fanSentiment: 2, description: "Standard approach." } },
-      { text: "No specific plan, we'll see.", effects: { morale: -3, fanSentiment: -3, description: "Lacks preparation." } },
-      { text: "Not revealing our tactics.", effects: { morale: 0, fanSentiment: -1, description: "Standard manager response." } },
+      { text: 'He is not for sale at any price.', morale: +3, fans: +4, style: 'defiant' },
+      { text: 'Every player has his price, but we want to keep him.', morale: +1, fans: 0, style: 'pragmatic' },
+      { text: 'If he wants to leave, the door is open.', morale: -5, fans: -4, style: 'honest' },
+      { text: 'I will not discuss individual players.', morale: 0, fans: -1, style: 'evasive' },
     ],
   },
   {
-    id: 3, question: "How do you respond to criticism of recent performances?",
+    id: 3,
+    question: 'The board expects a top-4 finish. Is that realistic?',
     options: [
-      { text: "The criticism is unfair, we've been playing well.", effects: { morale: 4, fanSentiment: 2, description: "Defends team, boosts morale." } },
-      { text: "We accept it and will work harder.", effects: { morale: 1, fanSentiment: 4, description: "Humility wins fans." } },
-      { text: "Critics don't understand our challenges.", effects: { morale: 2, fanSentiment: -3, description: "Defensive, may alienate." } },
-      { text: "No comment.", effects: { morale: 0, fanSentiment: -2, description: "Fans want engagement." } },
-    ],
-  },
-  {
-    id: 4, question: "Will you make changes to the starting lineup?",
-    options: [
-      { text: "Yes, we have a few surprises.", effects: { morale: 3, fanSentiment: 4, opponentBoost: 2, description: "Creates intrigue." } },
-      { text: "Sticking with the same team.", effects: { morale: 2, fanSentiment: 2, description: "Consistency builds morale." } },
-      { text: "Still deciding, depends on training.", effects: { morale: 0, fanSentiment: 0, description: "Neutral response." } },
-      { text: "Not revealing our lineup.", effects: { morale: 0, fanSentiment: -1, description: "Standard approach." } },
-    ],
-  },
-  {
-    id: 5, question: "What's your message to the fans?",
-    options: [
-      { text: "We'll give everything for the win, for you!", effects: { morale: 5, fanSentiment: 10, description: "Massive boost all around." } },
-      { text: "We appreciate your support and will do our best.", effects: { morale: 2, fanSentiment: 5, description: "Positive but less impactful." } },
-      { text: "We need your support more than ever.", effects: { morale: 1, fanSentiment: 3, description: "Appeals for support." } },
-      { text: "We'll see how it goes.", effects: { morale: -2, fanSentiment: -5, description: "Lacks passion, disappoints." } },
+      { text: 'Absolutely. That is the minimum target.', morale: +4, fans: +5, style: 'ambitious' },
+      { text: 'It will be tough, but we will fight for it.', morale: +2, fans: +2, style: 'realistic' },
+      { text: 'We are building for the long term.', morale: -1, fans: -2, style: 'patient' },
+      { text: 'I do not set targets. I just win.', morale: +1, fans: +3, style: 'confident' },
     ],
   },
 ];
 
 export default function PressPage() {
-  const [selectedClub, setSelectedClub] = useState<Club | null>(null);
-  const [qIndex, setQIndex] = useState(0);
-  const [selected, setSelected] = useState<Record<number, number>>({});
-  const [fanSentiment, setFanSentiment] = useState(50);
-  const [teamMorale, setTeamMorale] = useState(75);
+  const selectedClubId = useAppStore((s) => s.selectedClubId);
+  const club = useMemo(() => getOfflineClub(selectedClubId || 1) || OFFLINE_CLUBS[0], [selectedClubId]);
+  const news = useMemo(() => getOfflineNews(club.id), [club]);
+
+  const [currentQ, setCurrentQ] = useState(0);
+  const [morale, setMorale] = useState(70);
+  const [fanSentiment, setFanSentiment] = useState(65);
+  const [answers, setAnswers] = useState<number[]>([]);
   const [done, setDone] = useState(false);
 
-  useEffect(() => {
-    const clubId = localStorage.getItem("selectedClubId");
-    if (clubId) setSelectedClub(clubs.find(c => c.id === parseInt(clubId)) || null);
-  }, []);
+  const handleAnswer = (optIdx: number) => {
+    const opt = PRESS_QUESTIONS[currentQ].options[optIdx];
+    setMorale((m) => Math.max(0, Math.min(100, m + opt.morale)));
+    setFanSentiment((f) => Math.max(0, Math.min(100, f + opt.fans)));
+    setAnswers((a) => [...a, optIdx]);
+    playRawClick(0.2);
 
-  if (!selectedClub) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center animate-fade-in">
-          <p className="text-offwhite-500 text-sm">No club selected.</p>
-          <Link href="/start" className="game-btn mt-4 inline-block">Choose Club</Link>
-        </div>
-      </div>
-    );
-  }
-
-  const current = pressQuestions[qIndex];
-  const selectedOpt = selected[current.id] !== undefined ? current.options[selected[current.id]] : null;
-
-  const handleNext = () => {
-    if (selectedOpt) {
-      setFanSentiment(prev => Math.max(0, Math.min(100, prev + selectedOpt.effects.fanSentiment)));
-      setTeamMorale(prev => Math.max(0, Math.min(100, prev + selectedOpt.effects.morale)));
+    if (currentQ < PRESS_QUESTIONS.length - 1) {
+      setTimeout(() => setCurrentQ((q) => q + 1), 500);
+    } else {
+      setTimeout(() => setDone(true), 500);
     }
-    if (qIndex < pressQuestions.length - 1) setQIndex(qIndex + 1);
-    else setDone(true);
   };
 
-  if (done) {
-    return (
-      <div className="min-h-screen p-6 animate-fade-in">
-        <div className="max-w-2xl mx-auto">
-          <h1 className="text-xl font-bold text-offwhite mb-6">Press Conference Complete</h1>
-          <div className="game-card p-6 mb-4">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="text-center">
-                <p className="section-header">Fan Sentiment</p>
-                <span className="text-4xl font-black text-pink-400">{fanSentiment}</span>
-                <div className="h-1.5 rounded-full bg-white/5 mt-2">
-                  <div className="h-full rounded-full bg-pink-400" style={{ width: `${fanSentiment}%` }} />
-                </div>
-              </div>
-              <div className="text-center">
-                <p className="section-header">Team Morale</p>
-                <span className="text-4xl font-black text-blue-400">{teamMorale}</span>
-                <div className="h-1.5 rounded-full bg-white/5 mt-2">
-                  <div className="h-full rounded-full bg-blue-400" style={{ width: `${teamMorale}%` }} />
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="game-card p-4">
-            <p className="section-header">Summary</p>
-            <div className="space-y-2">
-              {pressQuestions.map(q => {
-                const optIdx = selected[q.id];
-                if (optIdx === undefined) return null;
-                return (
-                  <div key={q.id} className="p-2 rounded-lg bg-white/[0.02]">
-                    <p className="text-xs font-medium text-offwhite-300">{q.question}</p>
-                    <p className="text-[10px] text-offwhite-500 mt-0.5">Your answer: {q.options[optIdx].text}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <button onClick={() => { setQIndex(0); setSelected({}); setFanSentiment(50); setTeamMorale(75); setDone(false); }} className="game-btn mt-4">New Conference</button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen p-6 animate-fade-in">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-xl font-bold text-offwhite mb-6">Press Conference</h1>
+    <PageTransition>
+      <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12 max-w-4xl mx-auto">
+        <StaggerContainer className="mb-6" stagger={0.05}>
+          <StaggerItem>
+            <div className="section-header !mb-1">Media Center</div>
+            <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">Press Conference</h1>
+            <p className="text-tertiary-c text-sm mt-1">{club.name} · Pre-Match Briefing</p>
+          </StaggerItem>
+        </StaggerContainer>
 
-        {/* Progress */}
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-[10px] text-offwhite-500">Question {qIndex + 1} of {pressQuestions.length}</span>
-          <div className="w-32 h-1 rounded-full bg-white/5">
-            <div className="h-full rounded-full bg-gold" style={{ width: `${((qIndex + 1) / pressQuestions.length) * 100}%` }} />
-          </div>
+        {/* Sentiment meters */}
+        <div className="grid grid-cols-2 gap-3 mb-6">
+          <Card>
+            <CardContent>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-tertiary-c font-mono uppercase tracking-widest">Squad Morale</span>
+                <span className="text-sm font-mono font-bold text-gold-300 tabular-nums">{morale}%</span>
+              </div>
+              <ProgressBar value={morale} tone={morale >= 70 ? 'success' : morale >= 50 ? 'gold' : 'danger'} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-tertiary-c font-mono uppercase tracking-widest">Fan Sentiment</span>
+                <span className="text-sm font-mono font-bold text-gold-300 tabular-nums">{fanSentiment}%</span>
+              </div>
+              <ProgressBar value={fanSentiment} tone={fanSentiment >= 70 ? 'success' : fanSentiment >= 50 ? 'gold' : 'danger'} />
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Question */}
-        <div className="game-card p-6 mb-4">
-          <h2 className="text-base font-semibold text-offwhite mb-4">{current.question}</h2>
-          <div className="space-y-2">
-            {current.options.map((opt, i) => {
-              const isSelected = selected[current.id] === i;
-              return (
-                <button
-                  key={i}
-                  onClick={() => setSelected({ ...selected, [current.id]: i })}
-                  className={`w-full text-left p-3 rounded-lg transition-all duration-150 ${
-                    isSelected ? "bg-gold/10 ring-1 ring-gold/30" : "bg-white/[0.03] hover:bg-white/[0.06] ring-1 ring-white/[0.04]"
-                  }`}
-                >
-                  <p className={`text-sm ${isSelected ? 'text-gold' : 'text-offwhite-300'}`}>{opt.text}</p>
-                  {isSelected && <p className="text-[10px] text-offwhite-500 mt-1">{opt.effects.description}</p>}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Press Conference or Results */}
+        <AnimatePresence mode="wait">
+          {!done ? (
+            <motion.div key={`q-${currentQ}`} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}>
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Mic className="w-4 h-4 text-gold-300" />
+                    <CardTitle>Question {currentQ + 1} of {PRESS_QUESTIONS.length}</CardTitle>
+                  </div>
+                  <CardDescription>Choose your response carefully — it affects morale and fan sentiment</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-4 rounded-md bg-surface-2/50 border-l-2 border-gold-300">
+                    <Quote className="w-4 h-4 text-gold-300 mb-2" />
+                    <p className="text-sm text-primary-c font-medium italic">
+                      "{PRESS_QUESTIONS[currentQ].question}"
+                    </p>
+                  </div>
 
-        {/* Live Effects */}
-        <div className="game-card p-4 mb-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="flex justify-between text-xs mb-1"><span className="text-offwhite-500">Fan Sentiment</span><span className="font-bold text-pink-400">{fanSentiment}</span></div>
-              <div className="h-1.5 rounded-full bg-white/5"><div className="h-full rounded-full bg-pink-400" style={{ width: `${fanSentiment}%` }} /></div>
-            </div>
-            <div>
-              <div className="flex justify-between text-xs mb-1"><span className="text-offwhite-500">Team Morale</span><span className="font-bold text-blue-400">{teamMorale}</span></div>
-              <div className="h-1.5 rounded-full bg-white/5"><div className="h-full rounded-full bg-blue-400" style={{ width: `${teamMorale}%` }} /></div>
-            </div>
-          </div>
-        </div>
+                  <div className="space-y-2">
+                    {PRESS_QUESTIONS[currentQ].options.map((opt, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleAnswer(idx)}
+                        className="w-full p-3 rounded-md border border-white/5 bg-surface-2 hover:border-gold-soft hover:bg-surface-3 transition-all text-left group"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-sm text-primary-c group-hover:text-gold-200 transition-colors flex-1">{opt.text}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {opt.morale !== 0 && (
+                              <span className={cn('text-[10px] font-mono font-bold', opt.morale > 0 ? 'text-success' : 'text-danger')}>
+                                {opt.morale > 0 ? '+' : ''}{opt.morale} M
+                              </span>
+                            )}
+                            {opt.fans !== 0 && (
+                              <span className={cn('text-[10px] font-mono font-bold', opt.fans > 0 ? 'text-success' : 'text-danger')}>
+                                {opt.fans > 0 ? '+' : ''}{opt.fans} F
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ) : (
+            <motion.div key="done" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Star className="w-4 h-4 text-gold-300" />
+                    <CardTitle>Press Conference Complete</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="text-center py-6">
+                  <p className="text-sm text-secondary-c mb-4">
+                    Your responses have been recorded. The media will react, players will take notice, and fans will judge.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 mb-6">
+                    <div className="p-3 rounded-md bg-surface-2/50">
+                      <div className="text-[10px] text-tertiary-c font-mono uppercase tracking-widest">Final Morale</div>
+                      <div className="text-2xl font-mono font-bold text-gold-300">{morale}%</div>
+                    </div>
+                    <div className="p-3 rounded-md bg-surface-2/50">
+                      <div className="text-[10px] text-tertiary-c font-mono uppercase tracking-widest">Fan Sentiment</div>
+                      <div className="text-2xl font-mono font-bold text-gold-300">{fanSentiment}%</div>
+                    </div>
+                  </div>
+                  <Button variant="gold" onClick={() => { playRawClick(0.2); window.history.back(); }}>
+                    <ChevronRight className="w-4 h-4" /> Return to Dashboard
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* Navigation */}
-        <div className="flex justify-between">
-          <button onClick={() => qIndex > 0 && setQIndex(qIndex - 1)} disabled={qIndex === 0} className="game-btn-secondary text-xs disabled:opacity-30">Previous</button>
-          <button onClick={handleNext} disabled={selected[current.id] === undefined} className="game-btn text-xs disabled:opacity-30">
-            {qIndex < pressQuestions.length - 1 ? "Next" : "Finish"}
-          </button>
+        {/* Latest News */}
+        <div className="mt-6">
+          <div className="section-header">Media Buzz</div>
+          <Card>
+            <CardContent className="!p-0">
+              <div className="divide-y divide-white/3">
+                {news.map((item, idx) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="px-4 py-3 hover:bg-white/3 cursor-pointer group"
+                  >
+                    <div className="flex items-start gap-3">
+                      <Badge variant={item.category === 'transfer' ? 'info' : item.category === 'injury' ? 'danger' : item.category === 'rumor' ? 'warning' : 'default'} size="sm">
+                        {item.source}
+                      </Badge>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-primary-c group-hover:text-gold-200 transition-colors text-truncate-2">{item.headline}</p>
+                        <p className="text-[10px] text-tertiary-c font-mono mt-1">{item.time} ago · {item.category}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 }

@@ -9,6 +9,7 @@ import { TopBar } from './TopBar';
 import { RightPanel } from './RightPanel';
 import { MobileTabBar } from './MobileTabBar';
 import { LiveFeedBar } from './LiveFeedBar';
+import { AnimatedBackground } from '@/components/ui/AnimatedBackground';
 import { useAppStore } from '@/lib/store';
 import { useAudioEngine } from '@/lib/audio';
 import { SHORTCUT_TO_NAV } from '@/lib/navigation';
@@ -91,13 +92,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-base safe-area-all">
+    <div className="flex h-screen overflow-hidden bg-surface-base safe-area-all relative">
+      {/* Cinematic animated background — all pages inherit this */}
+      <AnimatedBackground variant={pathname.includes('match-simulation') ? 'matchday' : 'default'} />
+
       {/* Left rail — fixed */}
       <LeftRail />
 
       {/* Main column — flex-1, offset by rail width */}
       <div
-        className="flex flex-col flex-1 min-w-0 transition-[margin] duration-300 ease-premium md:ml-[72px]"
+        className="flex flex-col flex-1 min-w-0 transition-[margin] duration-300 ease-premium md:ml-[72px] relative z-10"
         style={{ marginLeft: 'var(--nav-rail-width)' }}
       >
         <TopBar />

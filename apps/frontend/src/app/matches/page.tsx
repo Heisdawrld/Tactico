@@ -1,125 +1,180 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { clubs } from "@/types/club";
-import { matches } from "@/types/match";
-import { Club } from "@/types/club";
-import { Match } from "@/types/match";
+import { useMemo } from 'react';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { useAppStore } from '@/lib/store';
+import { playRawClick } from '@/lib/audio';
+import { cn } from '@/lib/utils';
+import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/motion';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { getOfflineClub, getOfflineFixtures, OFFLINE_CLUBS } from '@/lib/game-data';
+import { Calendar, ChevronRight, PlayCircle, Trophy, MapPin, Clock } from 'lucide-react';
 
 export default function MatchesPage() {
-  const [selectedClub, setSelectedClub] = useState<Club | null>(null);
-  const [clubMatches, setClubMatches] = useState<Match[]>([]);
-  const router = useRouter();
+  const selectedClubId = useAppStore((s) => s.selectedClubId);
+  const club = useMemo(() => getOfflineClub(selectedClubId || 1) || OFFLINE_CLUBS[0], [selectedClubId]);
+  const fixtures = useMemo(() => getOfflineFixtures(club.id), [club]);
 
-  useEffect(() => {
-    const clubId = localStorage.getItem("selectedClubId");
-    if (clubId) {
-      const club = clubs.find((c) => c.id === parseInt(clubId));
-      setSelectedClub(club || null);
-      setClubMatches(matches.filter(m => m.homeClubId === parseInt(clubId) || m.awayClubId === parseInt(clubId)));
-    }
-  }, []);
-
-  if (!selectedClub) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center animate-fade-in">
-          <p className="text-offwhite-500 text-sm">No club selected.</p>
-          <Link href="/start" className="game-btn mt-4 inline-block">Choose Club</Link>
-        </div>
-      </div>
-    );
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed": return "bg-green-500/20 text-green-400";
-      case "in_progress": return "bg-gold/20 text-gold";
-      default: return "bg-white/5 text-offwhite-500";
-    }
-  };
+  const played = fixtures.filter((f) => f.status === 'finished');
+  const upcoming = fixtures.filter((f) => f.status !== 'finished');
+  const wins = played.filter((f) => {
+    const isHome = f.homeClubId === club.id;
+    return (isHome && (f.homeScore || 0) > (f.awayScore || 0)) || (!isHome && (f.awayScore || 0) > (f.homeScore || 0));
+  }).length;
+  const draws = played.filter((f) => f.homeScore === f.awayScore).length;
+  const losses = played.length - wins - draws;
 
   return (
-    <div className="min-h-screen p-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <PageTransition>
+      <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12 max-w-5xl mx-auto">
+        <StaggerContainer className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6" stagger={0.05}>
+          <StaggerItem>
+            <div className="section-header !mb-1">Fixtures & Results</div>
+            <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">Matches</h1>
+            <p className="text-tertiary-c text-sm mt-1">{club.name} · Season 2026</p>
+          </StaggerItem>
+          <StaggerItem className="grid grid-cols-3 gap-2">
+            <RecordPill label="W" value={wins} tone="success" />
+            <RecordPill label="D" value={draws} tone="warning" />
+            <RecordPill label="L" value={losses} tone="danger" />
+          </StaggerItem>
+        </StaggerContainer>
+
+        {/* Upcoming */}
+        <div className="mb-6">
+          <div className="section-header">Upcoming Fixtures</div>
+          <div className="space-y-2">
+            {upcoming.map((m, idx) => {
+              const isHome = m.homeClubId === club.id;
+              const opp = OFFLINE_CLUBS.find((c) => c.id === (isHome ? m.awayClubId : m.homeClubId));
+              if (!opp) return null;
+              return (
+                <motion.div
+                  key={m.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                >
+                  <Card hover>
+                    <CardContent className="!p-3">
+                      <div className="flex items-center gap-3">
+                        {/* Competition badge */}
+                        <div className="shrink-0 w-12 text-center">
+                          <Badge variant={m.status === 'live' ? 'danger' : 'outline'} size="sm">
+                            {m.status === 'live' ? 'LIVE' : `W${m.week}`}
+                          </Badge>
+                        </div>
+
+                        {/* Match info */}
+                        <div className="flex-1 min-w-0 flex items-center gap-3">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span className={cn('text-[10px] font-mono font-bold uppercase tracking-wider', isHome ? 'text-success' : 'text-warning')}>
+                              {isHome ? 'HOME' : 'AWAY'}
+                            </span>
+                            <div
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold text-black shrink-0"
+                              style={{ background: `linear-gradient(135deg, ${opp.homeKitColor}, ${opp.awayKitColor || opp.homeKitColor})` }}
+                            >
+                              {opp.shortName?.slice(0, 3)}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-display font-semibold text-sm text-primary-c truncate">{opp.name}</div>
+                              <div className="text-[10px] text-tertiary-c font-mono flex items-center gap-1.5">
+                                <Calendar className="w-2.5 h-2.5" /> {m.matchDate}
+                                <MapPin className="w-2.5 h-2.5 ml-1" /> {isHome ? club.stadium : opp.stadium}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Play button */}
+                        {m.status === 'live' || m.status === 'scheduled' ? (
+                          <Link href="/match-simulation" onClick={() => playRawClick(0.15)}>
+                            <Button variant={m.status === 'live' ? 'gold' : 'secondary'} size="sm" className="shrink-0">
+                              <PlayCircle className="w-3.5 h-3.5" />
+                              {m.status === 'live' ? 'Resume' : 'Play'}
+                            </Button>
+                          </Link>
+                        ) : null}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Results */}
         <div>
-          <h1 className="text-xl font-bold text-offwhite">Fixtures</h1>
-          <p className="text-xs text-offwhite-500 mt-0.5">{selectedClub.name} — All Competitions</p>
+          <div className="section-header">Recent Results</div>
+          <div className="space-y-2">
+            {played.slice().reverse().map((m, idx) => {
+              const isHome = m.homeClubId === club.id;
+              const opp = OFFLINE_CLUBS.find((c) => c.id === (isHome ? m.awayClubId : m.homeClubId));
+              if (!opp) return null;
+              const ourScore = isHome ? m.homeScore : m.awayScore;
+              const oppScore = isHome ? m.awayScore : m.homeScore;
+              const result = ourScore! > oppScore! ? 'W' : ourScore === oppScore ? 'D' : 'L';
+
+              return (
+                <motion.div
+                  key={m.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                >
+                  <Card>
+                    <CardContent className="!p-3">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          'w-8 h-8 rounded-md flex items-center justify-center font-bold text-sm shrink-0',
+                          result === 'W' ? 'bg-success/20 text-success' : result === 'D' ? 'bg-warning/20 text-warning' : 'bg-danger/20 text-danger'
+                        )}>
+                          {result}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-display font-medium text-sm text-primary-c truncate">
+                            {isHome ? 'vs' : '@'} {opp.name}
+                          </div>
+                          <div className="text-[10px] text-tertiary-c font-mono">
+                            {m.competition} · Week {m.week}
+                          </div>
+                        </div>
+                        <div className="text-center shrink-0">
+                          <div className="font-mono font-bold text-lg text-primary-c tabular-nums">
+                            {ourScore} - {oppScore}
+                          </div>
+                          <div className="text-[9px] text-tertiary-c uppercase tracking-wider">
+                            {isHome ? 'Home' : 'Away'}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
       </div>
+    </PageTransition>
+  );
+}
 
-      {/* Match List */}
-      <div className="space-y-2">
-        {clubMatches.map((match) => {
-          const homeClub = clubs.find((c) => c.id === match.homeClubId);
-          const awayClub = clubs.find((c) => c.id === match.awayClubId);
-
-          return (
-            <div key={match.id} className="game-card p-4 flex items-center justify-between group">
-              <div className="flex items-center gap-4 flex-1">
-                {/* Home */}
-                <div className="flex items-center gap-3 w-[200px]">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: homeClub?.homeKitColor + '20' }}>
-                    <div className="w-4 h-4 rounded" style={{ backgroundColor: homeClub?.homeKitColor }} />
-                  </div>
-                  <span className={`text-sm font-medium ${match.homeClubId === selectedClub.id ? 'text-gold' : 'text-offwhite-300'}`}>
-                    {homeClub?.name}
-                  </span>
-                </div>
-
-                {/* Score / VS */}
-                <div className="text-center w-24">
-                  {match.status === "completed" ? (
-                    <span className="text-lg font-black text-offwhite">{match.homeScore} - {match.awayScore}</span>
-                  ) : (
-                    <span className="text-sm font-bold text-offwhite-500">VS</span>
-                  )}
-                </div>
-
-                {/* Away */}
-                <div className="flex items-center gap-3 w-[200px]">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: awayClub?.homeKitColor + '20' }}>
-                    <div className="w-4 h-4 rounded" style={{ backgroundColor: awayClub?.homeKitColor }} />
-                  </div>
-                  <span className={`text-sm font-medium ${match.awayClubId === selectedClub.id ? 'text-gold' : 'text-offwhite-300'}`}>
-                    {awayClub?.name}
-                  </span>
-                </div>
-              </div>
-
-              {/* Meta */}
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${getStatusColor(match.status)}`}>
-                    {match.status === "in_progress" ? "LIVE" : match.status.toUpperCase()}
-                  </span>
-                  <p className="text-[10px] text-offwhite-500 mt-1">{match.competition}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="stat-pill text-[9px]">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                    {match.weather}
-                  </span>
-                </div>
-                {match.status !== "completed" && (
-                  <button
-                    onClick={() => {
-                      localStorage.setItem("currentMatchId", match.id.toString());
-                      router.push("/match-simulation");
-                    }}
-                    className="game-btn text-[10px] px-3 py-1.5"
-                  >
-                    Play
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+function RecordPill({ label, value, tone }: { label: string; value: number; tone: 'success' | 'warning' | 'danger' }) {
+  return (
+    <div className="flex flex-col items-center px-3 py-2 rounded-md bg-surface-2/60 border border-white/5">
+      <span className={cn(
+        'text-xs font-bold',
+        tone === 'success' && 'text-success',
+        tone === 'warning' && 'text-warning',
+        tone === 'danger' && 'text-danger',
+      )}>{label}</span>
+      <span className="text-lg font-mono font-bold text-primary-c tabular-nums">{value}</span>
     </div>
   );
 }

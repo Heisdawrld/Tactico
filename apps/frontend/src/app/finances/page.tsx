@@ -1,159 +1,165 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { clubs } from "@/types/club";
-import { Club } from "@/types/club";
-import {
-  ClubFinances, clubFinances, Facility, clubFacilities,
-  facilityBenefits, facilityUpgradeCosts, facilityMaintenanceCosts, calculateWeeklyFinances,
-} from "@/types/finance";
+import { useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import { useAppStore } from '@/lib/store';
+import { playRawClick } from '@/lib/audio';
+import { cn, formatCurrency } from '@/lib/utils';
+import { PageTransition, StaggerContainer, StaggerItem, AnimatedCounter } from '@/components/ui/motion';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { StatBlock, ProgressBar, Sparkline } from '@/components/ui/Stat';
+import { getOfflineClub, getOfflineFinances, getOfflineSquad, OFFLINE_CLUBS } from '@/lib/game-data';
+import { Wallet, TrendingUp, TrendingDown, Building2, ArrowUpRight, ArrowDownRight, ChevronUp } from 'lucide-react';
+
+const FACILITIES = [
+  { id: 'training', label: 'Training Facilities', icon: <Building2 className="w-4 h-4" />, levelKey: 'trainingFacilities' as const },
+  { id: 'youth', label: 'Youth Academy', icon: <Building2 className="w-4 h-4" />, levelKey: 'youthAcademy' as const },
+  { id: 'stadium', label: 'Stadium', icon: <Building2 className="w-4 h-4" />, levelKey: 'stadiumCapacity' as const },
+  { id: 'medical', label: 'Medical Center', icon: <Building2 className="w-4 h-4" />, levelKey: 'trainingFacilities' as const },
+];
 
 export default function FinancesPage() {
-  const [selectedClub, setSelectedClub] = useState<Club | null>(null);
-  const [finances, setFinances] = useState<ClubFinances | null>(null);
-  const [facilities, setFacilities] = useState<Facility[]>([]);
-  const [weeklyFinances, setWeeklyFinances] = useState<{ income: number; expenses: number }>({ income: 0, expenses: 0 });
+  const selectedClubId = useAppStore((s) => s.selectedClubId);
+  const club = useMemo(() => getOfflineClub(selectedClubId || 1) || OFFLINE_CLUBS[0], [selectedClubId]);
+  const finances = useMemo(() => getOfflineFinances(club.id), [club]);
+  const squad = useMemo(() => getOfflineSquad(club.id), [club]);
+  const totalWages = squad.reduce((s, p) => s + (p.wage || 0), 0);
 
-  useEffect(() => {
-    const clubId = localStorage.getItem("selectedClubId");
-    if (clubId) {
-      const club = clubs.find((c) => c.id === parseInt(clubId));
-      setSelectedClub(club || null);
-      if (club) {
-        setFinances(clubFinances[club.id] || null);
-        setFacilities(clubFacilities[club.id] || []);
-        setWeeklyFinances(calculateWeeklyFinances(club.id));
-      }
-    }
-  }, []);
-
-  const handleUpgrade = (facilityId: number) => {
-    const newFacilities = facilities.map(f => {
-      if (f.id === facilityId && f.level < 5) {
-        return { ...f, level: f.level + 1, upgradeCost: facilityUpgradeCosts[f.type][f.level], maintenanceCost: facilityMaintenanceCosts[f.type][f.level + 1], benefits: facilityBenefits[f.type][f.level + 1] };
-      }
-      return f;
-    });
-    setFacilities(newFacilities);
-    if (finances) {
-      const facility = facilities.find(f => f.id === facilityId);
-      if (facility && facility.level < 5) {
-        setFinances({ ...finances, balance: finances.balance - facilityUpgradeCosts[facility.type][facility.level] });
-      }
-    }
-  };
-
-  if (!selectedClub || !finances) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center animate-fade-in">
-          <p className="text-offwhite-500 text-sm">No club selected.</p>
-          <Link href="/start" className="game-btn mt-4 inline-block">Choose Club</Link>
-        </div>
-      </div>
-    );
-  }
-
-  const netWeekly = weeklyFinances.income - weeklyFinances.expenses;
-  const facilityIcons: Record<string, string> = { "Training": "zap", "Youth": "users", "Medical": "heart", "Stadium": "building" };
+  const income = finances.income.sponsorships + finances.income.tickets + finances.income.tv + finances.income.merchandise;
+  const expenses = finances.expenses.wages + finances.expenses.maintenance;
+  const weeklyNet = income - expenses;
 
   return (
-    <div className="min-h-screen p-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-offwhite">Finances</h1>
-          <p className="text-xs text-offwhite-500 mt-0.5">{selectedClub.name} — Financial Overview</p>
-        </div>
-      </div>
+    <PageTransition>
+      <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12 max-w-5xl mx-auto">
+        <StaggerContainer className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6" stagger={0.05}>
+          <StaggerItem>
+            <div className="section-header !mb-1">Club Finances</div>
+            <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">Finances</h1>
+            <p className="text-tertiary-c text-sm mt-1">{club.name} · Weekly Overview</p>
+          </StaggerItem>
+          <StaggerItem>
+            <Badge variant={weeklyNet >= 0 ? 'success' : 'danger'} size="md">
+              {weeklyNet >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+              {weeklyNet >= 0 ? '+' : ''}{formatCurrency(weeklyNet, 'EUR', true)}/wk
+            </Badge>
+          </StaggerItem>
+        </StaggerContainer>
 
-      {/* Financial Cards */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="game-card p-4">
-          <p className="section-header">Balance</p>
-          <span className="text-3xl font-black text-green-400">${finances.balance.toLocaleString()}</span>
-          <p className="text-[10px] text-offwhite-500 mt-1">Available funds</p>
+        {/* KPI Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <StatBlock
+            label="BALANCE"
+            value={<AnimatedCounter value={club.balance} format="currency" />}
+            tone="gold"
+            icon={<Wallet className="w-3.5 h-3.5" />}
+            delta={2}
+            deltaSuffix="M"
+          />
+          <StatBlock
+            label="WAGE BUDGET"
+            value={<AnimatedCounter value={club.wageBudget} format="currency" />}
+            tone="danger"
+            icon={<TrendingDown className="w-3.5 h-3.5" />}
+          />
+          <StatBlock
+            label="TRANSFER BUDGET"
+            value={<AnimatedCounter value={club.transferBudget} format="currency" />}
+            tone="success"
+            icon={<TrendingUp className="w-3.5 h-3.5" />}
+          />
+          <StatBlock
+            label="SQUAD VALUE"
+            value={<AnimatedCounter value={club.marketValue} format="currency" />}
+            tone="gold"
+            icon={<Wallet className="w-3.5 h-3.5" />}
+          />
         </div>
-        <div className="game-card p-4">
-          <p className="section-header">Wage Budget</p>
-          <span className="text-3xl font-black text-offwhite">${finances.wageBudget.toLocaleString()}</span>
-          <div className="h-1.5 rounded-full bg-white/5 mt-2">
-            <div className="h-full rounded-full bg-blue-400" style={{ width: `${Math.min(100, (finances.wageBudget / finances.balance) * 100)}%` }} />
-          </div>
-        </div>
-        <div className="game-card p-4">
-          <p className="section-header">Transfer Budget</p>
-          <span className="text-3xl font-black text-purple-400">${finances.transferBudget.toLocaleString()}</span>
-          <div className="h-1.5 rounded-full bg-white/5 mt-2">
-            <div className="h-full rounded-full bg-purple-400" style={{ width: `${Math.min(100, (finances.transferBudget / finances.balance) * 100)}%` }} />
-          </div>
-        </div>
-      </div>
 
-      {/* Income / Expenses */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="game-card p-4">
-          <p className="section-header">Weekly Income</p>
-          <span className="text-xl font-bold text-green-400">+${weeklyFinances.income.toLocaleString()}</span>
-          <div className="mt-2 space-y-1">
-            <div className="flex justify-between text-[10px]"><span className="text-offwhite-500">Sponsors</span><span>${finances.sponsorshipRevenue.toLocaleString()}</span></div>
-            <div className="flex justify-between text-[10px]"><span className="text-offwhite-500">Other</span><span>${finances.otherIncome.toLocaleString()}</span></div>
-          </div>
-        </div>
-        <div className="game-card p-4">
-          <p className="section-header">Weekly Expenses</p>
-          <span className="text-xl font-bold text-red-400">-${weeklyFinances.expenses.toLocaleString()}</span>
-          <div className="mt-2 space-y-1">
-            <div className="flex justify-between text-[10px]"><span className="text-offwhite-500">Wages</span><span>${finances.weeklyExpenses.toLocaleString()}</span></div>
-            <div className="flex justify-between text-[10px]"><span className="text-offwhite-500">Maintenance</span><span>${facilities.reduce((s, f) => s + f.maintenanceCost, 0).toLocaleString()}</span></div>
-          </div>
-        </div>
-        <div className="game-card p-4">
-          <p className="section-header">Net Weekly</p>
-          <span className={`text-xl font-bold ${netWeekly >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {netWeekly >= 0 ? '+' : '-'}${Math.abs(netWeekly).toLocaleString()}
-          </span>
-          <p className="text-[10px] text-offwhite-500 mt-1">{netWeekly >= 0 ? 'Profitable' : 'Running at loss'}</p>
-        </div>
-      </div>
-
-      {/* Facilities */}
-      <div className="game-card p-4">
-        <p className="section-header">Facilities</p>
-        <div className="grid grid-cols-2 gap-3">
-          {facilities.map(facility => {
-            const isMax = facility.level >= 5;
-            const cost = isMax ? 0 : facilityUpgradeCosts[facility.type][facility.level];
-            return (
-              <div key={facility.id} className="p-3 rounded-lg bg-white/[0.02] border border-white/[0.04]">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h3 className="text-sm font-semibold">{facility.type}</h3>
-                    <span className="text-[10px] text-offwhite-500">Level {facility.level} / 5</span>
-                  </div>
-                  <span className="text-[10px] text-offwhite-500">${facility.maintenanceCost.toLocaleString()}/w</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-white/5 mb-2">
-                  <div className="h-full rounded-full bg-gold" style={{ width: `${(facility.level / 5) * 100}%` }} />
-                </div>
-                <div className="space-y-0.5 mb-3">
-                  {facility.benefits.slice(0, 2).map((b, i) => (
-                    <p key={i} className="text-[10px] text-offwhite-500">{b}</p>
-                  ))}
-                </div>
-                {!isMax ? (
-                  <button onClick={() => handleUpgrade(facility.id)} className="game-btn-secondary text-[10px] w-full py-1.5">
-                    Upgrade (${cost.toLocaleString()})
-                  </button>
-                ) : (
-                  <p className="text-[10px] text-center text-gold font-semibold">MAX LEVEL</p>
-                )}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Income */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2"><ArrowUpRight className="w-4 h-4 text-success" /><CardTitle>Weekly Income</CardTitle></div>
+              <Badge variant="success" size="sm">+{formatCurrency(income, 'EUR', true)}</Badge>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <FinanceRow label="Sponsorships" value={finances.income.sponsorships} tone="success" />
+              <FinanceRow label="Matchday Tickets" value={finances.income.tickets} tone="success" />
+              <FinanceRow label="TV Revenue" value={finances.income.tv} tone="success" />
+              <FinanceRow label="Merchandise" value={finances.income.merchandise} tone="success" />
+              <div className="pt-2 border-t border-white/5 flex items-center justify-between">
+                <span className="text-xs font-bold text-tertiary-c uppercase tracking-widest font-mono">TOTAL</span>
+                <span className="font-mono font-bold text-success tabular-nums">+{formatCurrency(income, 'EUR', true)}</span>
               </div>
-            );
-          })}
+            </CardContent>
+          </Card>
+
+          {/* Expenses */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2"><ArrowDownRight className="w-4 h-4 text-danger" /><CardTitle>Weekly Expenses</CardTitle></div>
+              <Badge variant="danger" size="sm">-{formatCurrency(expenses, 'EUR', true)}</Badge>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <FinanceRow label="Player Wages" value={finances.expenses.wages} tone="danger" />
+              <FinanceRow label="Stadium Maintenance" value={finances.expenses.maintenance} tone="danger" />
+              <FinanceRow label="Staff Salaries" value={Math.round(finances.expenses.wages * 0.15)} tone="danger" />
+              <FinanceRow label="Youth Academy" value={Math.round(club.balance * 0.0005)} tone="danger" />
+              <div className="pt-2 border-t border-white/5 flex items-center justify-between">
+                <span className="text-xs font-bold text-tertiary-c uppercase tracking-widest font-mono">TOTAL</span>
+                <span className="font-mono font-bold text-danger tabular-nums">-{formatCurrency(expenses, 'EUR', true)}</span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Facilities */}
+        <Card className="mt-4">
+          <CardHeader>
+            <div className="flex items-center gap-2"><Building2 className="w-4 h-4 text-gold-300" /><CardTitle>Facilities</CardTitle></div>
+            <CardDescription>Upgrade to improve player development & revenue</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {FACILITIES.map((f) => {
+              const level = f.levelKey === 'stadiumCapacity' ? Math.min(5, Math.floor((club.stadiumCapacity || 0) / 20000)) : club[f.levelKey];
+              const upgradeCost = (level || 0) * 25_000_000;
+              return (
+                <div key={f.id} className="p-3 rounded-md bg-surface-2/50 border border-white/3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gold-300">{f.icon}</span>
+                      <span className="text-sm font-medium text-primary-c">{f.label}</span>
+                    </div>
+                    <Badge variant="gold" size="sm">LVL {level}</Badge>
+                  </div>
+                  <div className="flex items-center gap-1 mb-2">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className={cn('flex-1 h-1.5 rounded-full', i < (level || 0) ? 'bg-gold-300' : 'bg-surface-4')} />
+                    ))}
+                  </div>
+                  <Button variant="secondary" size="sm" className="w-full" onClick={() => playRawClick(0.15)}>
+                    <ChevronUp className="w-3 h-3" /> Upgrade · {formatCurrency(upgradeCost, 'EUR', true)}
+                  </Button>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
       </div>
+    </PageTransition>
+  );
+}
+
+function FinanceRow({ label, value, tone }: { label: string; value: number; tone: 'success' | 'danger' }) {
+  return (
+    <div className="flex items-center justify-between py-1.5 border-b border-white/3 last:border-0">
+      <span className="text-xs text-secondary-c">{label}</span>
+      <span className={cn('font-mono font-semibold tabular-nums text-sm', tone === 'success' ? 'text-success' : 'text-danger')}>
+        {tone === 'success' ? '+' : '-'}{formatCurrency(value, 'EUR', true)}
+      </span>
     </div>
   );
 }
