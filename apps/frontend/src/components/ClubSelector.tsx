@@ -46,9 +46,11 @@ export default function ClubSelector() {
 
     try {
       // Use a smaller limit on first load for faster initial render
-      const limit = attempt === 0 ? 100 : 500;
+      const limit = attempt === 0 ? 30 : 100;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12_000); // 12s timeout
+      // Render free tier can take 25s+ on cold start — give it enough time
+      const timeoutMs = attempt === 0 ? 25_000 : 20_000;
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       const response = await fetch(`/api/clubs?limit=${limit}`, {
         signal: controller.signal,
@@ -70,7 +72,7 @@ export default function ClubSelector() {
       setRetryCount(0);
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        console.warn('Club fetch timed out (12s)');
+        console.warn(`Club fetch timed out (${attempt === 0 ? '25s' : '20s'})`);
       } else {
         console.error('Club fetch failed:', err);
       }
@@ -95,7 +97,13 @@ export default function ClubSelector() {
   };
 
   useEffect(() => {
-    fetchClubs();
+    // Warmup: ping the health endpoint to wake up Render before fetching clubs
+    // This fires-and-forgets — the actual fetch happens 500ms later
+    try {
+      fetch('/api/health').catch(() => {});
+    } catch {}
+    const warmupTimer = setTimeout(() => fetchClubs(), 500);
+    return () => clearTimeout(warmupTimer);
   }, []);
 
   // Derive unique leagues from clubs

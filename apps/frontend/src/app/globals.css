@@ -976,8 +976,8 @@ img, video {
 @media (orientation: landscape) and (max-height: 500px) {
   /* Compact topbar in landscape */
   :root {
-    --topbar-height: 44px;
-    --mobile-tabbar-height: 48px;
+    --topbar-height: 40px;
+    --mobile-tabbar-height: 44px;
     --livefeed-height: 28px;
   }
 
@@ -988,40 +988,61 @@ img, video {
 
   /* Compact spacing everywhere */
   .container-app {
-    padding: 0 1rem;
+    padding: 0 0.75rem;
   }
 
   /* Page content fills available height (no big paddings) */
   .page-mobile {
-    padding-top: 0.5rem;
+    padding-top: 0.25rem;
     padding-bottom: calc(var(--mobile-tabbar-height) + env(safe-area-inset-bottom, 0px) + 4px);
   }
 
-  /* Make the start page hero more compact in landscape */
+  /* Make the start page hero MUCH more compact in landscape */
   .start-hero-compact {
-    padding-top: 0.5rem !important;
-    padding-bottom: 0.5rem !important;
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
   }
   .start-hero-compact .tactico-logo {
-    transform: scale(0.7);
+    transform: scale(0.45) !important;
+    margin: -8px 0 !important;
+  }
+  /* Hide feature pills in ALL landscape — saves vertical space */
+  .start-feature-pills {
+    display: none !important;
+  }
+  /* Hide the tagline in landscape */
+  .start-tagline {
+    display: none !important;
+  }
+  /* Shrink the glass card padding in landscape */
+  .start-hero-compact .glass {
+    padding: 0.5rem !important;
+  }
+  /* Reduce gap between logo and card */
+  .start-hero-compact > div:first-child {
+    margin-bottom: 0 !important;
+  }
+  .start-hero-compact > div:first-child > div {
+    gap: 0.25rem !important;
+    margin-bottom: 0 !important;
   }
 
   /* Mobile tab bar shorter in landscape */
   .mobile-tabbar-compact a {
-    padding: 4px 0 !important;
+    padding: 3px 0 !important;
   }
   .mobile-tabbar-compact a span:last-child {
     font-size: 8px !important;
   }
   .mobile-tabbar-compact a svg {
-    width: 18px !important;
-    height: 18px !important;
+    width: 16px !important;
+    height: 16px !important;
   }
 
   /* Cards have less padding in landscape */
   .game-card,
   .card-content {
-    padding: 0.75rem !important;
+    padding: 0.5rem !important;
   }
 
   /* Stat blocks more compact */
