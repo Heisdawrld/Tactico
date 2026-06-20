@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TacticoLogo } from '@/components/ui/TacticoLogo';
 import { getCrowdAudio } from '@/lib/crowd-audio';
@@ -8,16 +8,16 @@ import { getCrowdAudio } from '@/lib/crowd-audio';
 /**
  * IntroCinematic — the cold open that boots the football universe.
  *
- * Sequence:
- *   Phase 1 (0-2s):   Black screen. Silence fades to distant crowd murmur.
- *   Phase 2 (2-4s):   Stadium lights fade in (radial gradient from center).
- *   Phase 3 (4-5s):   TACTICO logo appears, "forged from light" (scale + glow).
- *   Phase 4 (5-6s):   Tagline fades in: "The Living Football Universe"
- *   Phase 5 (6-7s):   Logo fades out. Transition to loading.
- *   Phase 6 (7s+):    Loading messages cycle: "Initializing Football World..."
- *                      "Loading Clubs...", "Loading Players...", etc.
+ * Total duration: ~8 seconds (skippable after 3s).
  *
- * No buttons. No UI. The game continues naturally.
+ * Sequence:
+ *   0.0s  Black screen. Silence.
+ *   1.0s  Crowd audio fades in. Stadium lights fade on.
+ *   2.0s  TACTICO logo "forged from light" (scale + glow).
+ *   3.0s  Tagline: "The Living Football Universe"
+ *   4.0s  Logo fades out.
+ *   4.5s  Loading screen — messages cycle every 0.8s.
+ *   8.0s  Auto-advance to next step.
  */
 
 type Phase = 'black' | 'lights' | 'logo_reveal' | 'tagline' | 'fade_out' | 'loading';
@@ -27,9 +27,18 @@ const LOADING_MESSAGES = [
   'Loading Clubs...',
   'Loading Players...',
   'Building Match Engine...',
-  'Calibrating Player Attributes...',
   'Preparing Football Universe...',
 ];
+
+// Master timeline (milliseconds)
+const TIMING = {
+  lights: 1000,
+  logo_reveal: 2000,
+  tagline: 3000,
+  fade_out: 4000,
+  loading: 4500,
+  complete: 8000, // total duration before auto-advance
+};
 
 interface IntroCinematicProps {
   onComplete: () => void;
@@ -39,41 +48,71 @@ export function IntroCinematic({ onComplete }: IntroCinematicProps) {
   const [phase, setPhase] = useState<Phase>('black');
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
   const crowdRef = useRef(getCrowdAudio());
+  const completedRef = useRef(false);
 
-  // Phase timing
+  // Store onComplete in a ref so timer callbacks always call the latest version
+  // without causing effect re-runs.
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  // Safe complete — only fires once
+  const safeComplete = useCallback(() => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    try {
+      crowdRef.current.setVolume(0.15);
+    } catch {}
+    onCompleteRef.current();
+  }, []);
+
+  // ---------- MASTER TIMELINE ----------
+  // Single useEffect with no deps — runs once on mount, sets all timers.
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
 
+    // Phase transitions
     timers.push(setTimeout(() => {
       crowdRef.current.start().catch(() => {});
       setPhase('lights');
-    }, 1500));
+    }, TIMING.lights));
 
-    timers.push(setTimeout(() => setPhase('logo_reveal'), 3000));
-    timers.push(setTimeout(() => setPhase('tagline'), 4200));
-    timers.push(setTimeout(() => setPhase('fade_out'), 5700));
-    timers.push(setTimeout(() => setPhase('loading'), 6700));
+    timers.push(setTimeout(() => setPhase('logo_reveal'), TIMING.logo_reveal));
+    timers.push(setTimeout(() => setPhase('tagline'), TIMING.tagline));
+    timers.push(setTimeout(() => setPhase('fade_out'), TIMING.fade_out));
+    timers.push(setTimeout(() => setPhase('loading'), TIMING.loading));
 
-    return () => timers.forEach(clearTimeout);
-  }, []);
+    // Auto-complete
+    timers.push(setTimeout(() => safeComplete(), TIMING.complete));
 
-  // Loading message cycling
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+  }, [safeComplete]);
+
+  // ---------- LOADING MESSAGE CYCLING ----------
+  // Separate effect — only depends on `phase` (not onComplete).
   useEffect(() => {
     if (phase !== 'loading') return;
+
+    let msgIdx = 0;
     const interval = setInterval(() => {
-      setLoadingMsgIndex((prev) => {
-        if (prev >= LOADING_MESSAGES.length - 1) {
-          setTimeout(() => {
-            crowdRef.current.setVolume(0.15);
-            onComplete();
-          }, 1500);
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, 1200);
+      msgIdx++;
+      if (msgIdx < LOADING_MESSAGES.length) {
+        setLoadingMsgIndex(msgIdx);
+      } else {
+        clearInterval(interval);
+      }
+    }, 800);
+
     return () => clearInterval(interval);
-  }, [phase, onComplete]);
+  }, [phase]);
+
+  // ---------- SKIP ----------
+  const handleSkip = useCallback(() => {
+    safeComplete();
+  }, [safeComplete]);
 
   return (
     <div className="fixed inset-0 z-max overflow-hidden bg-black">
@@ -143,7 +182,7 @@ export function IntroCinematic({ onComplete }: IntroCinematicProps) {
                 opacity: 1,
                 filter: ['brightness(3) blur(8px)', 'brightness(2) blur(2px)', 'brightness(1) blur(0px)'],
               }}
-              transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
               className="relative"
             >
               <motion.div
@@ -153,10 +192,10 @@ export function IntroCinematic({ onComplete }: IntroCinematicProps) {
                   filter: 'blur(20px)',
                 }}
                 animate={{ scale: [0.8, 1.2, 1], opacity: [0, 0.8, 0.4] }}
-                transition={{ duration: 1.2 }}
+                transition={{ duration: 1 }}
               />
               <div className="relative">
-                <TacticoLogo size={140} variant="mark" />
+                <TacticoLogo size={120} variant="mark" />
               </div>
             </motion.div>
 
@@ -164,7 +203,7 @@ export function IntroCinematic({ onComplete }: IntroCinematicProps) {
               className="font-headline text-5xl sm:text-6xl lg:text-7xl font-black tracking-tighter mt-8"
               initial={{ opacity: 0, y: 20, letterSpacing: '0.3em' }}
               animate={{ opacity: 1, y: 0, letterSpacing: '-0.03em' }}
-              transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
             >
               <span
                 style={{
@@ -189,7 +228,7 @@ export function IntroCinematic({ onComplete }: IntroCinematicProps) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
           >
             <p className="text-tertiary-c text-xs sm:text-sm uppercase tracking-[0.4em] font-mono font-semibold">
               The Living Football Universe
@@ -205,25 +244,26 @@ export function IntroCinematic({ onComplete }: IntroCinematicProps) {
             className="absolute inset-0 flex flex-col items-center justify-center bg-surface-base"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.5 }}
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="mb-8"
+              transition={{ duration: 0.4 }}
+              className="mb-6"
             >
-              <TacticoLogo size={56} variant="mark" />
+              <TacticoLogo size={48} variant="mark" />
             </motion.div>
 
+            {/* Cycling loading message */}
             <div className="h-6 flex items-center justify-center">
               <AnimatePresence mode="wait">
                 <motion.p
                   key={loadingMsgIndex}
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.4 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.3 }}
                   className="text-tertiary-c text-sm font-mono tracking-wider"
                 >
                   {LOADING_MESSAGES[loadingMsgIndex]}
@@ -231,22 +271,23 @@ export function IntroCinematic({ onComplete }: IntroCinematicProps) {
               </AnimatePresence>
             </div>
 
-            <div className="w-48 h-0.5 mt-6 bg-surface-3 rounded-full overflow-hidden">
+            {/* Progress bar — fills over 3.5s (loading duration) */}
+            <div className="w-40 h-0.5 mt-5 bg-surface-3 rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-gradient-to-r from-gold-300 to-gold-500"
                 initial={{ width: '0%' }}
-                animate={{ width: `${((loadingMsgIndex + 1) / LOADING_MESSAGES.length) * 100}%` }}
-                transition={{ duration: 1, ease: 'easeOut' }}
+                animate={{ width: '100%' }}
+                transition={{ duration: 3.5, ease: 'easeOut' }}
               />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Particle field */}
+      {/* Particle field during lights/logo phases */}
       {phase !== 'black' && phase !== 'loading' && (
         <div className="absolute inset-0 pointer-events-none">
-          {Array.from({ length: 15 }).map((_, i) => (
+          {Array.from({ length: 12 }).map((_, i) => (
             <motion.span
               key={i}
               className="absolute rounded-full bg-gold-300"
@@ -267,23 +308,31 @@ export function IntroCinematic({ onComplete }: IntroCinematicProps) {
         </div>
       )}
 
-      {/* Skip hint */}
-      <AnimatePresence>
-        {(phase === 'logo_reveal' || phase === 'tagline') && (
-          <motion.button
-            onClick={() => {
-              crowdRef.current.setVolume(0.15);
-              onComplete();
-            }}
-            className="absolute bottom-6 right-6 text-[10px] text-quaternary-c hover:text-tertiary-c transition-colors font-mono tracking-widest"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-          >
-            SKIP ›
-          </motion.button>
-        )}
-      </AnimatePresence>
+      {/* Skip button — always visible after 2s */}
+      {phase !== 'black' && phase !== 'loading' && (
+        <motion.button
+          onClick={handleSkip}
+          className="absolute bottom-6 right-6 text-[10px] text-quaternary-c hover:text-tertiary-c transition-colors font-mono tracking-widest z-10"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 2 }}
+        >
+          SKIP ›
+        </motion.button>
+      )}
+
+      {/* Tap to continue during loading (in case auto-advance fails) */}
+      {phase === 'loading' && (
+        <motion.button
+          onClick={handleSkip}
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-quaternary-c hover:text-tertiary-c transition-colors font-mono tracking-widest z-10"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 2, repeat: Infinity, delay: 1 }}
+        >
+          TAP TO CONTINUE
+        </motion.button>
+      )}
     </div>
   );
 }
