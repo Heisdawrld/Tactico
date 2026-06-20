@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Club, clubs as FALLBACK_CLUBS } from '@/types/club';
+import { Club } from '@/types/club';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getCrowdAudio } from '@/lib/crowd-audio';
+import { OFFLINE_CLUBS } from '@/lib/game-data';
 import { Search, X, ChevronRight, ArrowLeft, Trophy, Wallet, Building2, Star } from 'lucide-react';
 
 /**
@@ -20,41 +21,12 @@ interface CinematicClubSelectProps {
 }
 
 export function CinematicClubSelect({ onSelect, onBack }: CinematicClubSelectProps) {
-  const [clubs, setClubs] = useState<Club[]>(FALLBACK_CLUBS);
-  const [loading, setLoading] = useState(true);
+  const [clubs] = useState<Club[]>(OFFLINE_CLUBS);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Club | null>(null);
   const [zooming, setZooming] = useState(false);
 
-  // Fetch real clubs from API
-  useEffect(() => {
-    let cancelled = false;
-    const fetchClubs = async (attempt: number = 0) => {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), attempt === 0 ? 25000 : 20000);
-        const r = await fetch(`/api/clubs?limit=100`, { signal: controller.signal });
-        clearTimeout(timeoutId);
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const data: Club[] = await r.json();
-        if (!cancelled && Array.isArray(data) && data.length > 0) {
-          setClubs(data);
-          setLoading(false);
-        }
-      } catch (e) {
-        if (attempt < 2 && !cancelled) {
-          setTimeout(() => fetchClubs(attempt + 1), 1500);
-        } else if (!cancelled) {
-          // Keep using FALLBACK_CLUBS (already set as initial state)
-          setLoading(false);
-        }
-      }
-    };
-    // Warmup ping
-    fetch('/api/health').catch(() => {});
-    const t = setTimeout(() => fetchClubs(), 500);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, []);
+  // No API call — use offline data directly. Instant load.
 
   const filtered = useMemo(() => {
     let result = clubs;
@@ -80,44 +52,6 @@ export function CinematicClubSelect({ onSelect, onBack }: CinematicClubSelectPro
     getCrowdAudio().swell(1); // bigger roar
     setTimeout(() => onSelect(selected.id), 1200);
   };
-
-  // ---------- LOADING STATE ----------
-  if (loading) {
-    return (
-      <motion.div
-        className="fixed inset-0 z-max flex flex-col items-center justify-center bg-surface-base"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
-        <div className="w-12 h-12 rounded-full border-2 border-gold-soft border-t-gold-300 animate-spin mb-4" />
-        <p className="text-tertiary-c text-xs font-mono tracking-widest">LOADING CLUBS…</p>
-      </motion.div>
-    );
-  }
-
-  // ---------- ZOOM TRANSITION ----------
-  {zooming && selected && (
-    <motion.div
-      className="fixed inset-0 z-max flex items-center justify-center"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      style={{
-        background: `radial-gradient(circle at center, ${selected.homeKitColor}33 0%, #050507 80%)`,
-      }}
-    >
-      <motion.div
-        initial={{ scale: 0.3, opacity: 0 }}
-        animate={{ scale: 1.5, opacity: 1 }}
-        transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-        className="w-32 h-32 rounded-full flex items-center justify-center font-headline font-black text-4xl text-black shadow-2xl"
-        style={{
-          background: `linear-gradient(135deg, ${selected.homeKitColor}, ${selected.awayKitColor || selected.homeKitColor})`,
-        }}
-      >
-        {selected.shortName?.slice(0, 3) || selected.name.split(' ').map(w => w[0]).slice(0, 3).join('')}
-      </motion.div>
-    </motion.div>
-  )}
 
   // ---------- MAIN RENDER ----------
   return (

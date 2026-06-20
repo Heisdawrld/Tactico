@@ -182,11 +182,42 @@ function getEngine(): TacticoAudioEngine {
 
 /**
  * Public API: play a UI sound.
+ * Uses the full TacticoAudioEngine if audio is enabled.
+ * Falls back to a simple Web Audio click if engine isn't ready.
  */
 export function playSfx(name: SfxName) {
   const state = useAppStore.getState();
-  if (!state.audioEnabled) return;
+  if (!state.audioEnabled) {
+    // Even if "audio disabled" in settings, still play a very quiet click
+    // via raw Web Audio (so taps always feel responsive). Volume controlled
+    // by sfxVolume setting.
+    playRawClick(state.sfxVolume * 0.3);
+    return;
+  }
   getEngine().playSfx(name);
+}
+
+/**
+ * Play a raw Web Audio click — no dependency on the engine or audio files.
+ * This is the fallback that ALWAYS works (even before engine is initialized).
+ */
+export function playRawClick(volume: number = 0.1) {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(800, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.05);
+    gain.gain.setValueAtTime(volume, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.08);
+    // Close context after sound finishes
+    setTimeout(() => ctx.close(), 200);
+  } catch {}
 }
 
 /**

@@ -46,18 +46,16 @@ interface IntroCinematicProps {
 
 export function IntroCinematic({ onComplete }: IntroCinematicProps) {
   const [phase, setPhase] = useState<Phase>('black');
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
   const crowdRef = useRef(getCrowdAudio());
   const completedRef = useRef(false);
 
-  // Store onComplete in a ref so timer callbacks always call the latest version
-  // without causing effect re-runs.
   const onCompleteRef = useRef(onComplete);
   useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
-  // Safe complete — only fires once
   const safeComplete = useCallback(() => {
     if (completedRef.current) return;
     completedRef.current = true;
@@ -67,29 +65,46 @@ export function IntroCinematic({ onComplete }: IntroCinematicProps) {
     onCompleteRef.current();
   }, []);
 
-  // ---------- MASTER TIMELINE ----------
-  // Single useEffect with no deps — runs once on mount, sets all timers.
+  // ---------- AUDIO UNLOCK (user gesture required) ----------
+  // Browsers block AudioContext until a user interacts. We show a
+  // "TAP TO BEGIN" overlay. When tapped, we start the crowd audio
+  // and kick off the cinematic timeline.
+  const handleAudioUnlock = useCallback(() => {
+    if (audioUnlocked) return;
+    setAudioUnlocked(true);
+    // Start crowd audio immediately on the user gesture
+    crowdRef.current.start().catch(() => {});
+    // Play a UI click sound
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = 800;
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
+      ctx.close();
+    } catch {}
+  }, [audioUnlocked]);
+
+  // ---------- MASTER TIMELINE (starts after audio unlock) ----------
   useEffect(() => {
+    if (!audioUnlocked) return;
+
     const timers: ReturnType<typeof setTimeout>[] = [];
 
-    // Phase transitions
-    timers.push(setTimeout(() => {
-      crowdRef.current.start().catch(() => {});
-      setPhase('lights');
-    }, TIMING.lights));
+    timers.push(setTimeout(() => setPhase('lights'), 1000));
+    timers.push(setTimeout(() => setPhase('logo_reveal'), 2000));
+    timers.push(setTimeout(() => setPhase('tagline'), 3000));
+    timers.push(setTimeout(() => setPhase('fade_out'), 4000));
+    timers.push(setTimeout(() => setPhase('loading'), 4500));
+    timers.push(setTimeout(() => safeComplete(), 8000));
 
-    timers.push(setTimeout(() => setPhase('logo_reveal'), TIMING.logo_reveal));
-    timers.push(setTimeout(() => setPhase('tagline'), TIMING.tagline));
-    timers.push(setTimeout(() => setPhase('fade_out'), TIMING.fade_out));
-    timers.push(setTimeout(() => setPhase('loading'), TIMING.loading));
-
-    // Auto-complete
-    timers.push(setTimeout(() => safeComplete(), TIMING.complete));
-
-    return () => {
-      timers.forEach(clearTimeout);
-    };
-  }, [safeComplete]);
+    return () => timers.forEach(clearTimeout);
+  }, [audioUnlocked, safeComplete]);
 
   // ---------- LOADING MESSAGE CYCLING ----------
   // Separate effect — only depends on `phase` (not onComplete).
@@ -332,6 +347,33 @@ export function IntroCinematic({ onComplete }: IntroCinematicProps) {
         >
           TAP TO CONTINUE
         </motion.button>
+      )}
+
+      {/* ---------- TAP TO BEGIN overlay (audio unlock) ---------- */}
+      {!audioUnlocked && (
+        <motion.div
+          className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black cursor-pointer"
+          onClick={handleAudioUnlock}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          {/* Faint Tactico logo in background */}
+          <div className="opacity-20 mb-8">
+            <TacticoLogo size={80} variant="mark" />
+          </div>
+
+          <motion.p
+            className="text-tertiary-c text-sm font-mono tracking-[0.4em] uppercase mb-4"
+            animate={{ opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            Tap to Begin
+          </motion.p>
+          <p className="text-quaternary-c text-[10px] font-mono tracking-widest">
+            🔊 Best with sound on
+          </p>
+        </motion.div>
       )}
     </div>
   );

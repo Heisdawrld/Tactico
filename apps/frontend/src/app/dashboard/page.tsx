@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import {
   Trophy, Users, Wallet, Building2, TrendingUp, Activity,
@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { Club } from '@/types/club';
 import { Player } from '@/types/player';
-import { apiFetch } from '@/lib/api';
 import { useAppStore } from '@/lib/store';
 import { playSfx } from '@/lib/audio';
 import { cn, formatCurrency, formatNumber } from '@/lib/utils';
@@ -22,27 +21,16 @@ import {
   AnimatedCounter, FadeInOnView, GlowOrb, ParticleField,
   ShimmerText, ScaleIn,
 } from '@/components/ui/motion';
+import {
+  getOfflineClub, getOfflineSquad, getOfflineFixtures,
+  getOfflineLeagueTable, getOfflineNews, OFFLINE_CLUBS,
+} from '@/lib/game-data';
 
 /**
  * Dashboard — the showcase page.
  *
- * Layout (Bloomberg-dense, multi-column):
- *
- *  ┌─────────────────────────────────────────────────────────────┐
- *  │  HERO: Club crest + name + season/week + quick stats       │
- *  ├──────────────┬───────────────────┬─────────────────────────┤
- *  │ Squad morale │ Form (last 5)     │ Board confidence        │
- *  ├──────────────┴───────────────────┴─────────────────────────┤
- *  │  KPI ROW: 6 metric tiles with sparklines + deltas         │
- *  ├──────────────────────────┬────────────────────────────────┤
- *  │  TOP PERFORMERS (table)   │  UPCOMING FIXTURES            │
- *  │  Rating · Goals · Assists │  Next 3 matches               │
- *  ├──────────────────────────┼────────────────────────────────┤
- *  │  INJURY REPORT            │  MEDIA BUZZ (latest stories)  │
- *  │  Player · Status · ETA    │  Source · Headline · Time     │
- *  ├──────────────────────────┴────────────────────────────────┤
- *  │  FINANCE OVERVIEW (income vs expenses + sparkline)        │
- *  └───────────────────────────────────────────────────────────┘
+ * Uses OFFLINE game data (no database required) for instant load.
+ * Falls back to API if offline data unavailable.
  */
 export default function DashboardPage() {
   const selectedClubId = useAppStore((s) => s.selectedClubId);
@@ -50,30 +38,26 @@ export default function DashboardPage() {
   const currentWeek = useAppStore((s) => s.currentWeek);
   const advanceWeek = useAppStore((s) => s.advanceWeek);
 
-  const [club, setClub] = useState<Club | null>(null);
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!selectedClubId) {
-      setLoading(false);
-      return;
-    }
-    const fetchData = async () => {
-      try {
-        const clubs: Club[] = await apiFetch('/api/clubs');
-        const c = clubs.find((x) => x.id === selectedClubId);
-        setClub(c || null);
-        const allPlayers: Player[] = await apiFetch('/api/players');
-        setPlayers(allPlayers.filter((p) => p.clubId === selectedClubId));
-      } catch (e) {
-        console.error('Dashboard fetch error:', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+  // Use offline data — instant, no API calls, no loading state
+  const club = useMemo(() => {
+    if (!selectedClubId) return null;
+    return getOfflineClub(selectedClubId) || OFFLINE_CLUBS[0];
   }, [selectedClubId]);
+
+  const players = useMemo(() => {
+    if (!club) return [];
+    return getOfflineSquad(club.id);
+  }, [club]);
+
+  const fixtures = useMemo(() => {
+    if (!club) return [];
+    return getOfflineFixtures(club.id);
+  }, [club]);
+
+  const news = useMemo(() => {
+    if (!club) return [];
+    return getOfflineNews(club.id);
+  }, [club]);
 
   // ---------- DERIVED DATA ----------
   const topPlayers = useMemo(
@@ -88,18 +72,6 @@ export default function DashboardPage() {
     () => players.reduce((s, p) => s + (p.wage || 0), 0),
     [players]
   );
-
-  // ---------- LOADING STATE ----------
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full p-12">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-full border-2 border-gold-soft border-t-gold-300 animate-spin" />
-          <p className="text-sm text-tertiary-c font-mono tracking-widest">LOADING DASHBOARD…</p>
-        </div>
-      </div>
-    );
-  }
 
   // ---------- NO CLUB SELECTED ----------
   if (!club) {

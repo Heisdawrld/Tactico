@@ -4,9 +4,9 @@ import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Player, PlayerPosition } from '@/types/player';
 import { useAppStore } from '@/lib/store';
-import { apiFetch } from '@/lib/api';
 import { playSfx } from '@/lib/audio';
 import { cn, formatCurrency } from '@/lib/utils';
+import { getOfflineSquad, OFFLINE_CLUBS, getOfflineClub } from '@/lib/game-data';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -75,18 +75,16 @@ export default function SquadPage() {
       setLoading(false);
       return;
     }
-    apiFetch<Player[]>(`/api/players?team_id=${selectedClubId}&limit=200`)
-      .then((data) => {
-        setPlayers(data);
-        if (data.length === 0) {
-          setError('No players found for this club yet. Sync may still be running.');
-        }
-      })
-      .catch((e) => {
-        console.error('Failed to fetch squad:', e);
-        setError('Failed to load squad.');
-      })
-      .finally(() => setLoading(false));
+    // Use offline data — instant, no API calls
+    const squad = getOfflineSquad(selectedClubId);
+    if (squad.length === 0) {
+      // Fallback: try first offline club
+      const fallback = OFFLINE_CLUBS[0];
+      setPlayers(getOfflineSquad(fallback.id));
+    } else {
+      setPlayers(squad);
+    }
+    setLoading(false);
   }, [selectedClubId]);
 
   // ---------- DERIVED DATA ----------
