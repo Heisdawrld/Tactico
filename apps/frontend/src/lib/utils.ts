@@ -71,8 +71,8 @@ export function deltaColor(delta: number): string {
  * Format a delta with a + or - sign.
  */
 export function formatDelta(delta: number, suffix = ''): string {
-  const sign = delta > 0 ? '+' : delta < 0 ? '' : '';
-  return `${sign}${delta}${suffix}`;
+  const sign = delta > 0 ? '+' : delta < 0 ? '-' : '';
+  return `${sign}${Math.abs(delta)}${suffix}`;
 }
 
 /**

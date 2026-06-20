@@ -91,10 +91,14 @@ export const useAppStore = create<AppState>()(
       currentSeason: 1,
       currentWeek: 1,
       advanceWeek: () =>
-        set((s) => ({
-          currentWeek: s.currentWeek + 1,
-          currentSeason: s.currentWeek >= 38 ? s.currentSeason + 1 : s.currentSeason,
-        })),
+        set((s) => {
+          // Check old week BEFORE incrementing
+          const isNewSeason = s.currentWeek >= 38;
+          return {
+            currentWeek: isNewSeason ? 1 : s.currentWeek + 1,
+            currentSeason: isNewSeason ? s.currentSeason + 1 : s.currentSeason,
+          };
+        }),
       setCurrentSeason: (s) => set({ currentSeason: s }),
       setCurrentWeek: (w) => set({ currentWeek: w }),
 

@@ -66,6 +66,7 @@ module.exports = {
           800: '#6B5008',
           900: '#4A3805',
           DEFAULT: '#FFD700',
+          soft: 'rgba(255, 215, 0, 0.12)', // for bg-gold-soft/30 etc.
         },
         // ============ SEMANTIC ============
         success: '#22C55E',

@@ -24,6 +24,7 @@ export function AnimatedCounter({
   duration = 1.2,
   prefix = '',
   suffix = '',
+  currency = 'EUR',
   className,
 }: {
   value: number;
@@ -32,6 +33,7 @@ export function AnimatedCounter({
   duration?: number;
   prefix?: string;
   suffix?: string;
+  currency?: 'EUR' | 'USD' | 'GBP';
   className?: string;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -52,13 +54,14 @@ export function AnimatedCounter({
       if (format === 'percent') {
         formatted = `${latest.toFixed(decimals)}%`;
       } else if (format === 'currency') {
+        const symbol = currency === 'EUR' ? '€' : currency === 'USD' ? '$' : '£';
         const abs = Math.abs(latest);
         if (abs >= 1_000_000) {
-          formatted = `$${(latest / 1_000_000).toFixed(1)}M`;
+          formatted = `${symbol}${(latest / 1_000_000).toFixed(1)}M`;
         } else if (abs >= 1_000) {
-          formatted = `$${(latest / 1_000).toFixed(0)}K`;
+          formatted = `${symbol}${(latest / 1_000).toFixed(0)}K`;
         } else {
-          formatted = `$${latest.toFixed(0)}`;
+          formatted = `${symbol}${latest.toFixed(0)}`;
         }
       } else {
         const abs = Math.abs(latest);

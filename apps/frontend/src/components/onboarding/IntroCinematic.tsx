@@ -60,7 +60,9 @@ export function IntroCinematic({ onComplete }: IntroCinematicProps) {
     if (completedRef.current) return;
     completedRef.current = true;
     try {
-      crowdRef.current.setVolume(0.15);
+      // Fade out crowd audio then stop — prevents bleed into dashboard
+      crowdRef.current.setVolume(0);
+      setTimeout(() => crowdRef.current.stop(), 500);
     } catch {}
     onCompleteRef.current();
   }, []);

@@ -53,15 +53,15 @@ export const OFFLINE_CLUBS: Club[] = [
 // ============================================================
 
 const PLAYER_NAMES = {
-  GK: ['Alisson', 'Ederson', 'Courtois', 'Ter Stegen', 'Donnarumma', 'Neuer', 'Oblak', 'Maignan', 'Pope', 'Sanchez', 'Raya', 'Onana', 'Martínez', 'Sommer', 'Trapp'],
-  DEF: ['Van Dijk', 'Díaz', 'Saliba', 'Gabriel', 'Rüdiger', 'Militão', 'Stones', 'Dias', 'Akanji', 'Bastoni', 'Bremer', 'Koulibaly', 'Kimpembe', 'Hernández', 'Davies', 'Hakimi', 'Walker', 'Robertson', 'Alexander-Arnold', 'Trippier', 'Cancelo', 'Gvardiol', 'Calafiori', 'Timber', 'White', 'Tomori', 'Scalvini', 'Buongiorno', 'Clyne', ' Konsa'],
-  MID: ['Rodri', 'De Bruyne', 'Bellingham', 'Vinicius Jr', 'Musiala', 'Wirtz', 'Pedri', 'Gavi', 'Gündoğan', 'Rice', 'Caicedo', 'Mac Allister', 'Szoboszlai', 'Fernández', 'Tonali', 'Barella', 'Locatelli', 'Verratti', 'Vitinha', 'Zubimendi', 'Ødegaard', 'Saka', 'Foden', 'Doku', 'Gnabry', 'Sané', 'Coman', 'Olise', 'Palmer', 'Eze'],
-  ATT: ['Haaland', 'Mbappé', 'Lewandowski', 'Kane', 'Salah', 'Son', 'Gakpo', 'Núñez', 'Jota', 'Isak', 'Gordon', 'Fati', 'Yamal', 'Raphinha', 'Lewin', 'Watkins', 'Isak', 'Gyökeres', 'Osimhen', 'Vlahović', 'Lautaro', 'Thuram', 'Leão', 'Pulisic', 'Chiesa', 'Kvaratskhelia', 'Dembele', 'Barcola', 'Asensio', 'Dembélé'],
+  GK: [['Alisson', 'Becker'], ['Ederson', 'Moraes'], ['Thibaut', 'Courtois'], ['Marc-André', 'Stegen'], ['Gianluigi', 'Donnarumma'], ['Manuel', 'Neuer'], ['Jan', 'Oblak'], ['Mike', 'Maignan'], ['Nick', 'Pope'], ['David', 'Raya'], ['André', 'Onana'], ['Emiliano', 'Martínez'], ['Yann', 'Sommer'], ['Kevin', 'Trapp']],
+  DEF: [['Virgil', 'van Dijk'], ['Cristian', 'Romero'], ['William', 'Saliba'], ['Gabriel', 'Magalhães'], ['Antonio', 'Rüdiger'], ['Éder', 'Militão'], ['John', 'Stones'], ['Rúben', 'Dias'], ['Manuel', 'Akanji'], ['Alessandro', 'Bastoni'], ['Gleison', 'Bremer'], ['Kalidou', 'Koulibaly'], ['Presnel', 'Kimpembe'], ['Lucas', 'Hernández'], ['Alphonso', 'Davies'], ['Achraf', 'Hakimi'], ['Kyle', 'Walker'], ['Andrew', 'Robertson'], ['Trent', 'Alexander-Arnold'], ['Kieran', 'Trippier'], ['João', 'Cancelo'], ['Joško', 'Gvardiol'], ['Riccardo', 'Calafiori'], ['Jurriën', 'Timber'], ['Ben', 'White'], ['Fikayo', 'Tomori'], ['Giorgio', 'Scalvini'], ['Alessandro', 'Buongiorno']],
+  MID: [['Rodri', 'Hernández'], ['Kevin', 'De Bruyne'], ['Jude', 'Bellingham'], ['Vinícius', 'Júnior'], ['Jamal', 'Musiala'], ['Florian', 'Wirtz'], ['Pedri', 'González'], ['Gavi', 'Páez'], ['Ilkay', 'Gündoğan'], ['Declan', 'Rice'], ['Moisés', 'Caicedo'], ['Alexis', 'Mac Allister'], ['Dominik', 'Szoboszlai'], ['Enzo', 'Fernández'], ['Sandro', 'Tonali'], ['Nicolò', 'Barella'], ['Manuel', 'Locatelli'], ['Marco', 'Verratti'], ['Vitinha', 'Ferreira'], ['Martin', 'Zubimendi'], ['Martin', 'Ødegaard'], ['Bukayo', 'Saka'], ['Phil', 'Foden'], ['Jérémy', 'Doku'], ['Serge', 'Gnabry'], ['Leroy', 'Sané'], ['Kingsley', 'Coman'], ['Michael', 'Olise'], ['Cole', 'Palmer'], ['Eberechi', 'Eze']],
+  ATT: [['Erling', 'Haaland'], ['Kylian', 'Mbappé'], ['Robert', 'Lewandowski'], ['Harry', 'Kane'], ['Mohamed', 'Salah'], ['Heung-min', 'Son'], ['Cody', 'Gakpo'], ['Darwin', 'Núñez'], ['Diogo', 'Jota'], ['Alexander', 'Isak'], ['Anthony', 'Gordon'], ['Ansu', 'Fati'], ['Lamine', 'Yamal'], ['Raphinha', 'Dias'], ['Dominic', 'Calvert-Lewin'], ['Ollie', 'Watkins'], ['Viktor', 'Gyökeres'], ['Victor', 'Osimhen'], ['Dušan', 'Vlahović'], ['Lautaro', 'Martínez'], ['Marcus', 'Thuram'], ['Rafael', 'Leão'], ['Christian', 'Pulisic'], ['Federico', 'Chiesa'], ['Khvicha', 'Kvaratskhelia'], ['Ousmane', 'Dembélé'], ['Bradley', 'Barcola'], ['Marco', 'Asensio']],
 };
 
 const NATIONALITIES = ['England', 'Spain', 'France', 'Germany', 'Italy', 'Brazil', 'Argentina', 'Portugal', 'Netherlands', 'Belgium', 'Croatia', 'Norway', 'Sweden', 'Denmark', 'Morocco', 'Nigeria', 'Japan', 'South Korea', 'Uruguay', 'Colombia'];
 
-function rand(arr: string[]): string { return arr[Math.floor(Math.random() * arr.length)]; }
+function rand(arr: any[]): any { return arr[Math.floor(Math.random() * arr.length)]; }
 function randInt(min: number, max: number): number { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
 function generatePlayer(id: number, clubId: number, position: string, shirtNumber: number, baseRating: number): Player {
@@ -70,7 +70,10 @@ function generatePlayer(id: number, clubId: number, position: string, shirtNumbe
   const isMID = ['CDM', 'CM', 'CAM', 'RM', 'LM'].includes(position);
   const isATT = ['RW', 'LW', 'CF', 'ST'].includes(position);
 
-  const firstName = isGK ? rand(PLAYER_NAMES.GK) : isDEF ? rand(PLAYER_NAMES.DEF) : isMID ? rand(PLAYER_NAMES.MID) : rand(PLAYER_NAMES.ATT);
+  const namePair = isGK ? rand(PLAYER_NAMES.GK) : isDEF ? rand(PLAYER_NAMES.DEF) : isMID ? rand(PLAYER_NAMES.MID) : rand(PLAYER_NAMES.ATT);
+  const firstName = namePair[0];
+  const lastName = namePair[1] || '';
+  const fullName = `${firstName} ${lastName}`.trim();
   const age = randInt(17, 36);
   const ovr = Math.max(50, Math.min(95, baseRating + randInt(-5, 5)));
   const pot = age <= 23 ? Math.min(99, ovr + randInt(3, 15)) : age <= 27 ? Math.min(99, ovr + randInt(0, 4)) : ovr;
@@ -87,7 +90,7 @@ function generatePlayer(id: number, clubId: number, position: string, shirtNumbe
   const wage = Math.round(marketValue * 0.05);
 
   return {
-    id, firstName, lastName: '', fullName: firstName,
+    id, firstName, lastName, fullName,
     age, nationality: rand(NATIONALITIES),
     clubId, position: position as any,
     overallRating: ovr, potentialRating: pot,
@@ -167,12 +170,13 @@ export interface OfflineMatch {
   week: number;
 }
 
-const _fixtureCache: OfflineMatch[] | null = null;
+const _fixtureCache = new Map<number, OfflineMatch[]>();
 export function getOfflineFixtures(clubId: number): OfflineMatch[] {
+  if (_fixtureCache.has(clubId)) return _fixtureCache.get(clubId)!;
+
   const club = OFFLINE_CLUBS.find((c) => c.id === clubId);
   if (!club) return [];
 
-  // Generate fixtures against other clubs in same league
   const leagueClubs = OFFLINE_CLUBS.filter((c) => c.league === club.league && c.id !== clubId);
   const fixtures: OfflineMatch[] = [];
   let id = 1;
@@ -180,7 +184,7 @@ export function getOfflineFixtures(clubId: number): OfflineMatch[] {
   for (let week = 1; week <= 8; week++) {
     const opp = leagueClubs[(week - 1) % leagueClubs.length];
     const isHome = week % 2 === 1;
-    const played = week < 4; // first 3 weeks already played
+    const played = week < 4;
 
     fixtures.push({
       id: id++,
@@ -195,6 +199,7 @@ export function getOfflineFixtures(clubId: number): OfflineMatch[] {
     });
   }
 
+  _fixtureCache.set(clubId, fixtures);
   return fixtures;
 }
 
@@ -218,7 +223,10 @@ export interface LeagueTableRow {
   form: string[];
 }
 
+const _leagueTableCache = new Map<number, LeagueTableRow[]>();
 export function getOfflineLeagueTable(leagueId: number): LeagueTableRow[] {
+  if (_leagueTableCache.has(leagueId)) return _leagueTableCache.get(leagueId)!;
+
   const leagueClubs = OFFLINE_CLUBS.filter((c) => c.leagueId === leagueId);
   const rows: LeagueTableRow[] = leagueClubs.map((c) => {
     const played = randInt(8, 12);
@@ -237,6 +245,7 @@ export function getOfflineLeagueTable(leagueId: number): LeagueTableRow[] {
   });
   rows.sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference);
   rows.forEach((r, i) => { r.position = i + 1; });
+  _leagueTableCache.set(leagueId, rows);
   return rows;
 }
 
