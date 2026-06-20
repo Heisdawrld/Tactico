@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
 import { playSfx } from '@/lib/audio';
 import { cn, formatCurrency } from '@/lib/utils';
+import { getOfflineClub } from '@/lib/game-data';
 import {
   ChevronRight,
   Bell,
@@ -35,36 +36,22 @@ export function TopBar() {
   const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
   const selectedClubId = useAppStore((s) => s.selectedClubId);
 
-  const [club, setClub] = useState<{ name: string; shortName: string; primaryColor: string } | null>(null);
-  const [finances, setFinances] = useState<{ balance: number; wageBudget: number; transferBudget: number }>({
-    balance: 0,
-    wageBudget: 0,
-    transferBudget: 0,
-  });
   const [hasNotifications, setHasNotifications] = useState(true);
   const [now, setNow] = useState<Date | null>(null);
 
-  // Load club + finances from /api/clubs
-  useEffect(() => {
-    if (!selectedClubId) return;
-    fetch('/api/clubs')
-      .then((r) => r.json())
-      .then((clubs: any[]) => {
-        const c = clubs.find((x) => x.id === selectedClubId);
-        if (c) {
-          setClub({
-            name: c.name,
-            shortName: c.shortName || c.name.slice(0, 3).toUpperCase(),
-            primaryColor: c.homeKitColor || '#FFD700',
-          });
-          setFinances({
-            balance: c.balance ?? 0,
-            wageBudget: c.wageBudget ?? 0,
-            transferBudget: c.transferBudget ?? 0,
-          });
-        }
-      })
-      .catch(() => {});
+  // Use offline data — instant, no API calls
+  const club = useMemo(() => {
+    if (!selectedClubId) return null;
+    const c = getOfflineClub(selectedClubId);
+    return c ? { name: c.name, shortName: c.shortName, homeKitColor: c.homeKitColor } : null;
+  }, [selectedClubId]);
+
+  const finances = useMemo(() => {
+    if (!selectedClubId) return { balance: 0, wageBudget: 0, transferBudget: 0 };
+    const c = getOfflineClub(selectedClubId);
+    return c
+      ? { balance: c.balance, wageBudget: c.wageBudget, transferBudget: c.transferBudget }
+      : { balance: 0, wageBudget: 0, transferBudget: 0 };
   }, [selectedClubId]);
 
   // Live clock (client-side only to avoid hydration mismatch)
@@ -90,20 +77,20 @@ export function TopBar() {
           className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center font-headline font-bold text-sm text-black shadow-md"
           style={{
             background: club
-              ? `linear-gradient(135deg, ${club.primaryColor}, ${club.primaryColor}99)`
+              ? `linear-gradient(135deg, ${club.homeKitColor}, ${club.homeKitColor}99)`
               : 'linear-gradient(135deg, var(--gold-300), var(--gold-500))',
           }}
         >
           {club?.shortName?.slice(0, 2) ?? 'TC'}
         </div>
 
-        <div className="min-w-0 hidden sm:block">
+        <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="font-display font-semibold text-sm text-primary-c text-truncate-1">
               {club?.name ?? 'Select a Club'}
             </span>
-            <ChevronRight className="w-3 h-3 text-tertiary-c" />
-            <span className="text-xs text-tertiary-c">Season {currentSeason}</span>
+            <ChevronRight className="w-3 h-3 text-tertiary-c hidden sm:block" />
+            <span className="text-xs text-tertiary-c hidden sm:block">Season {currentSeason}</span>
           </div>
           <div className="text-[10px] text-tertiary-c font-mono tracking-wide mt-0.5 flex items-center gap-2">
             <span className="flex items-center gap-1">
@@ -112,8 +99,8 @@ export function TopBar() {
             </span>
             {now && (
               <>
-                <span className="text-quaternary-c">·</span>
-                <span>
+                <span className="text-quaternary-c hidden sm:inline">·</span>
+                <span className="hidden sm:inline">
                   {now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                 </span>
               </>
