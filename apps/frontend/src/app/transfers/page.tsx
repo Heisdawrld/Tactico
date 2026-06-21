@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
+import { useSelectedClub } from '@/lib/useSelectedClub';
 import { playRawClick } from '@/lib/audio';
 import { cn, formatCurrency } from '@/lib/utils';
 import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/motion';
@@ -14,8 +15,8 @@ import { OFFLINE_CLUBS, getOfflineSquad } from '@/lib/game-data';
 import { ArrowLeftRight, Search, X, Wallet, Star, ChevronRight, ShoppingCart, TrendingUp } from 'lucide-react';
 
 export default function TransfersPage() {
-  const selectedClubId = useAppStore((s) => s.selectedClubId);
-  const myClub = useMemo(() => OFFLINE_CLUBS.find((c) => c.id === selectedClubId) || OFFLINE_CLUBS[0], [selectedClubId]);
+  const { club: myClub, hydrated } = useSelectedClub();
+  
 
   const [search, setSearch] = useState('');
   const [posFilter, setPosFilter] = useState<string | null>(null);
@@ -25,7 +26,7 @@ export default function TransfersPage() {
   // Build transfer market from all clubs' squads (excluding my club)
   const marketPlayers = useMemo(() => {
     const all: any[] = [];
-    OFFLINE_CLUBS.filter((c) => c.id !== myClub.id).forEach((c) => {
+    OFFLINE_CLUBS.filter((c) => c.id !== myClub!.id).forEach((c) => {
       const squad = getOfflineSquad(c.id);
       squad.forEach((p) => {
         all.push({ ...p, clubName: c.name, clubShort: c.shortName, clubColor: c.homeKitColor });
@@ -66,11 +67,11 @@ export default function TransfersPage() {
             <div className="section-header !mb-1">Transfer Market</div>
             <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">Transfers</h1>
             <p className="text-tertiary-c text-sm mt-1">
-              Budget: <span className="text-success font-mono font-semibold">{formatCurrency(myClub.transferBudget, 'EUR', true)}</span>
+              Budget: <span className="text-success font-mono font-semibold">{formatCurrency(myClub!.transferBudget, 'EUR', true)}</span>
             </p>
           </StaggerItem>
           <StaggerItem className="flex gap-2">
-            <Badge variant="outline" size="md"><Wallet className="w-3 h-3" /> {formatCurrency(myClub.transferBudget, 'EUR', true)}</Badge>
+            <Badge variant="outline" size="md"><Wallet className="w-3 h-3" /> {formatCurrency(myClub!.transferBudget, 'EUR', true)}</Badge>
             <Badge variant="gold" size="md"><Star className="w-3 h-3" /> {filtered.length} players</Badge>
           </StaggerItem>
         </StaggerContainer>
@@ -212,10 +213,10 @@ export default function TransfersPage() {
                 <Button
                   variant="gold" size="md" className="flex-1"
                   onClick={() => { playRawClick(0.2); setSelectedPlayer(null); }}
-                  disabled={selectedPlayer.marketValue > myClub.transferBudget}
+                  disabled={selectedPlayer.marketValue > myClub!.transferBudget}
                 >
                   <ShoppingCart className="w-4 h-4" />
-                  {selectedPlayer.marketValue > myClub.transferBudget ? 'Insufficient Budget' : 'Make Offer'}
+                  {selectedPlayer.marketValue > myClub!.transferBudget ? 'Insufficient Budget' : 'Make Offer'}
                 </Button>
                 <Button variant="secondary" size="md" onClick={() => setSelectedPlayer(null)}>
                   Close

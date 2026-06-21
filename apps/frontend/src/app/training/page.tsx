@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
+import { useSelectedClub } from '@/lib/useSelectedClub';
 import { playRawClick } from '@/lib/audio';
 import { cn } from '@/lib/utils';
 import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/motion';
@@ -21,9 +22,8 @@ const TRAINING_CATEGORIES = [
 ];
 
 export default function TrainingPage() {
-  const selectedClubId = useAppStore((s) => s.selectedClubId);
-  const club = useMemo(() => getOfflineClub(selectedClubId || 1) || OFFLINE_CLUBS[0], [selectedClubId]);
-  const squad = useMemo(() => getOfflineSquad(club.id), [club]);
+  const { club, hydrated } = useSelectedClub();
+  const squad = useMemo(() => getOfflineSquad(club!.id), [club]);
 
   const [intensity, setIntensity] = useState<Record<string, number>>({
     technical: 60,
@@ -46,7 +46,7 @@ export default function TrainingPage() {
           <StaggerItem>
             <div className="section-header !mb-1">Weekly Schedule</div>
             <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">Training</h1>
-            <p className="text-tertiary-c text-sm mt-1">{club.name} · {club.trainingFacilities}/5 Facilities</p>
+            <p className="text-tertiary-c text-sm mt-1">{club!.name} · {club!.trainingFacilities}/5 Facilities</p>
           </StaggerItem>
           <StaggerItem>
             <Button variant="gold" size="sm" onClick={() => playRawClick(0.2)}>

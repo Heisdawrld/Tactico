@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
+import { useSelectedClub } from '@/lib/useSelectedClub';
 import { playRawClick } from '@/lib/audio';
 import { cn } from '@/lib/utils';
 import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/motion';
@@ -14,14 +15,13 @@ import { getOfflineClub, getOfflineFixtures, OFFLINE_CLUBS } from '@/lib/game-da
 import { Calendar, ChevronRight, PlayCircle, Trophy, MapPin, Clock } from 'lucide-react';
 
 export default function MatchesPage() {
-  const selectedClubId = useAppStore((s) => s.selectedClubId);
-  const club = useMemo(() => getOfflineClub(selectedClubId || 1) || OFFLINE_CLUBS[0], [selectedClubId]);
-  const fixtures = useMemo(() => getOfflineFixtures(club.id), [club]);
+  const { club, hydrated } = useSelectedClub();
+  const fixtures = useMemo(() => getOfflineFixtures(club!.id), [club]);
 
   const played = fixtures.filter((f) => f.status === 'finished');
   const upcoming = fixtures.filter((f) => f.status !== 'finished');
   const wins = played.filter((f) => {
-    const isHome = f.homeClubId === club.id;
+    const isHome = f.homeClubId === club!.id;
     return (isHome && (f.homeScore || 0) > (f.awayScore || 0)) || (!isHome && (f.awayScore || 0) > (f.homeScore || 0));
   }).length;
   const draws = played.filter((f) => f.homeScore === f.awayScore).length;
@@ -34,7 +34,7 @@ export default function MatchesPage() {
           <StaggerItem>
             <div className="section-header !mb-1">Fixtures & Results</div>
             <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">Matches</h1>
-            <p className="text-tertiary-c text-sm mt-1">{club.name} · Season 2026</p>
+            <p className="text-tertiary-c text-sm mt-1">{club!.name} · Season 2026</p>
           </StaggerItem>
           <StaggerItem className="grid grid-cols-3 gap-2">
             <RecordPill label="W" value={wins} tone="success" />
@@ -48,7 +48,7 @@ export default function MatchesPage() {
           <div className="section-header">Upcoming Fixtures</div>
           <div className="space-y-2">
             {upcoming.map((m, idx) => {
-              const isHome = m.homeClubId === club.id;
+              const isHome = m.homeClubId === club!.id;
               const opp = OFFLINE_CLUBS.find((c) => c.id === (isHome ? m.awayClubId : m.homeClubId));
               if (!opp) return null;
               return (
@@ -84,7 +84,7 @@ export default function MatchesPage() {
                               <div className="font-display font-semibold text-sm text-primary-c truncate">{opp.name}</div>
                               <div className="text-[10px] text-tertiary-c font-mono flex items-center gap-1.5">
                                 <Calendar className="w-2.5 h-2.5" /> {m.matchDate}
-                                <MapPin className="w-2.5 h-2.5 ml-1" /> {isHome ? club.stadium : opp.stadium}
+                                <MapPin className="w-2.5 h-2.5 ml-1" /> {isHome ? club!.stadium : opp.stadium}
                               </div>
                             </div>
                           </div>
@@ -113,7 +113,7 @@ export default function MatchesPage() {
           <div className="section-header">Recent Results</div>
           <div className="space-y-2">
             {played.slice().reverse().map((m, idx) => {
-              const isHome = m.homeClubId === club.id;
+              const isHome = m.homeClubId === club!.id;
               const opp = OFFLINE_CLUBS.find((c) => c.id === (isHome ? m.awayClubId : m.homeClubId));
               if (!opp) return null;
               const ourScore = isHome ? m.homeScore : m.awayScore;

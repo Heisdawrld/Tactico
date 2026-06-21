@@ -59,7 +59,52 @@ const PLAYER_NAMES = {
   ATT: [['Erling', 'Haaland'], ['Kylian', 'Mbappé'], ['Robert', 'Lewandowski'], ['Harry', 'Kane'], ['Mohamed', 'Salah'], ['Heung-min', 'Son'], ['Cody', 'Gakpo'], ['Darwin', 'Núñez'], ['Diogo', 'Jota'], ['Alexander', 'Isak'], ['Anthony', 'Gordon'], ['Ansu', 'Fati'], ['Lamine', 'Yamal'], ['Raphinha', 'Dias'], ['Dominic', 'Calvert-Lewin'], ['Ollie', 'Watkins'], ['Viktor', 'Gyökeres'], ['Victor', 'Osimhen'], ['Dušan', 'Vlahović'], ['Lautaro', 'Martínez'], ['Marcus', 'Thuram'], ['Rafael', 'Leão'], ['Christian', 'Pulisic'], ['Federico', 'Chiesa'], ['Khvicha', 'Kvaratskhelia'], ['Ousmane', 'Dembélé'], ['Bradley', 'Barcola'], ['Marco', 'Asensio']],
 };
 
-const NATIONALITIES = ['England', 'Spain', 'France', 'Germany', 'Italy', 'Brazil', 'Argentina', 'Portugal', 'Netherlands', 'Belgium', 'Croatia', 'Norway', 'Sweden', 'Denmark', 'Morocco', 'Nigeria', 'Japan', 'South Korea', 'Uruguay', 'Colombia'];
+const NATIONALITY_MAP: Record<string, string> = {
+  // English names
+  'Walker': 'England', 'White': 'England', 'Stones': 'England', 'Foden': 'England', 'Saka': 'England',
+  'Gordon': 'England', 'Bellingham': 'England', 'Rice': 'England', 'Watkins': 'England', 'Palmer': 'England',
+  'Eze': 'England', 'Calvert-Lewin': 'England', 'Pope': 'England', 'Raya': 'England', 'Trippier': 'England',
+  'Robertson': 'Scotland', 'Alexander-Arnold': 'England', 'Mac Allister': 'Argentina',
+  'Tomori': 'England',
+  // Spanish
+  'Saliba': 'France', 'Gabriel': 'Brazil', 'Pedri': 'Spain', 'Gavi': 'Spain', 'Gündoğan': 'Germany',
+  'Raphinha': 'Brazil', 'Yamal': 'Spain', 'Fati': 'Spain', 'Olise': 'France', 'Asensio': 'Spain',
+  'Barcola': 'France', 'Cancelo': 'Portugal', 'Ferreira': 'Portugal', 'Zubimendi': 'Spain',
+  'Rodri': 'Spain',
+  // French
+  'Mbappé': 'France', 'Dembélé': 'France', 'Coman': 'France',
+  'Kimpembe': 'France', 'Maignan': 'France', 'Hernández': 'France',
+  // German  
+  'Musiala': 'Germany', 'Wirtz': 'Germany', 'Sané': 'Germany', 'Gnabry': 'Germany',
+  'Neuer': 'Germany', 'Gvardiol': 'Croatia', 'Stegen': 'Germany', 'Trapp': 'Germany',
+  // Italian
+  'Donnarumma': 'Italy', 'Barella': 'Italy', 'Locatelli': 'Italy', 'Verratti': 'Italy', 'Chiesa': 'Italy',
+  'Scalvini': 'Italy', 'Buongiorno': 'Italy', 'Bastoni': 'Italy', 'Bremer': 'Brazil',
+  // South American
+  'Vinícius': 'Brazil', 'Júnior': 'Brazil', 'Haaland': 'Norway', 'Ødegaard': 'Norway',
+  'Son': 'South Korea', 'Caicedo': 'Ecuador', 'Fernández': 'Argentina',
+  'Martínez': 'Argentina', 'Vlahović': 'Serbia', 'Kvaratskhelia': 'Georgia', 'Leão': 'Portugal',
+  'Dias': 'Portugal', 'Jota': 'Portugal',
+  'Núñez': 'Uruguay', 'Gakpo': 'Netherlands', 'van Dijk': 'Netherlands', 'Akanji': 'Switzerland',
+  'Davies': 'Canada', 'Hakimi': 'Morocco', 'Osimhen': 'Nigeria', 'Oblak': 'Slovenia',
+  // GK names
+  'Becker': 'Brazil', 'Moraes': 'Brazil', 'Courtois': 'Belgium', 'Onana': 'Cameroon',
+  'Sommer': 'Switzerland',
+  // More
+  'Lewandowski': 'Poland', 'Kane': 'England', 'Salah': 'Egypt', 'Isak': 'Sweden',
+  'Thuram': 'France', 'Pulisic': 'USA', 'Gyökeres': 'Sweden', 'Szoboszlai': 'Hungary',
+  'Tonali': 'Italy', 'González': 'Spain', 'Páez': 'Spain',
+  'Doku': 'Belgium',
+};
+
+const DEFAULT_NATIONALITIES = ['England', 'Spain', 'France', 'Germany', 'Italy', 'Brazil', 'Argentina', 'Portugal', 'Netherlands', 'Belgium'];
+
+function getNationality(lastName: string, firstName: string): string {
+  if (NATIONALITY_MAP[lastName]) return NATIONALITY_MAP[lastName];
+  if (NATIONALITY_MAP[firstName]) return NATIONALITY_MAP[firstName];
+  const hash = (firstName + lastName).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  return DEFAULT_NATIONALITIES[hash % DEFAULT_NATIONALITIES.length];
+}
 
 function rand(arr: any[]): any { return arr[Math.floor(Math.random() * arr.length)]; }
 function randInt(min: number, max: number): number { return Math.floor(Math.random() * (max - min + 1)) + min; }
@@ -91,7 +136,7 @@ function generatePlayer(id: number, clubId: number, position: string, shirtNumbe
 
   return {
     id, firstName, lastName, fullName,
-    age, nationality: rand(NATIONALITIES),
+    age, nationality: getNationality(lastName, firstName),
     clubId, position: position as any,
     overallRating: ovr, potentialRating: pot,
     pace, shooting, passing, dribbling, defending, physicality,

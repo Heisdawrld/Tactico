@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
+import { useSelectedClub } from '@/lib/useSelectedClub';
 import { playRawClick } from '@/lib/audio';
 import { cn } from '@/lib/utils';
 import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/motion';
@@ -47,9 +48,8 @@ const PRESS_QUESTIONS = [
 ];
 
 export default function PressPage() {
-  const selectedClubId = useAppStore((s) => s.selectedClubId);
-  const club = useMemo(() => getOfflineClub(selectedClubId || 1) || OFFLINE_CLUBS[0], [selectedClubId]);
-  const news = useMemo(() => getOfflineNews(club.id), [club]);
+  const { club, hydrated } = useSelectedClub();
+  const news = useMemo(() => getOfflineNews(club!.id), [club]);
 
   const [currentQ, setCurrentQ] = useState(0);
   const [morale, setMorale] = useState(70);
@@ -78,7 +78,7 @@ export default function PressPage() {
           <StaggerItem>
             <div className="section-header !mb-1">Media Center</div>
             <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">Press Conference</h1>
-            <p className="text-tertiary-c text-sm mt-1">{club.name} · Pre-Match Briefing</p>
+            <p className="text-tertiary-c text-sm mt-1">{club!.name} · Pre-Match Briefing</p>
           </StaggerItem>
         </StaggerContainer>
 

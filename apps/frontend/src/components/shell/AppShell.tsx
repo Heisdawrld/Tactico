@@ -47,6 +47,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Initialize the audio engine (subscribes to store + Howler)
   useAudioEngine();
 
+  // Fallback hydration flag — ensures _hasHydrated is true even if
+  // onRehydrateStorage doesn't fire (happens in some edge cases)
+  useEffect(() => {
+    useAppStore.getState().setHasHydrated(true);
+  }, []);
+
   // Global keyboard shortcuts (g H = Dashboard, g S = Squad, etc.)
   useEffect(() => {
     let lastKey = '';

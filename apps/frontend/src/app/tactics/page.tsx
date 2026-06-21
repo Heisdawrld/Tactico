@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
+import { useSelectedClub } from '@/lib/useSelectedClub';
 import { playRawClick } from '@/lib/audio';
 import { cn } from '@/lib/utils';
 import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/motion';
@@ -54,9 +55,8 @@ const TACTICAL_STYLES = [
 ];
 
 export default function TacticsPage() {
-  const selectedClubId = useAppStore((s) => s.selectedClubId);
-  const club = useMemo(() => getOfflineClub(selectedClubId || 1) || null, [selectedClubId]);
-  const squad = useMemo(() => (club ? getOfflineSquad(club.id) : []), [club]);
+  const { club, hydrated } = useSelectedClub();
+  const squad = useMemo(() => (club ? getOfflineSquad(club!.id) : []), [club]);
   const [formation, setFormation] = useState('4-3-3');
   const [style, setStyle] = useState('possession');
   const [pressing, setPressing] = useState(60);
@@ -77,7 +77,7 @@ export default function TacticsPage() {
           <StaggerItem>
             <div className="section-header !mb-1">Tactical Setup</div>
             <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">Tactics</h1>
-            <p className="text-tertiary-c text-sm mt-1">{club.name} · {formation}</p>
+            <p className="text-tertiary-c text-sm mt-1">{club!.name} · {formation}</p>
           </StaggerItem>
           <StaggerItem className="flex gap-2">
             <Button variant="secondary" size="sm" onClick={() => { playRawClick(0.15); }}>
@@ -160,7 +160,7 @@ export default function TacticsPage() {
                             : 'bg-surface-2 border-gold-300 text-primary-c'
                         )}
                         style={{
-                          boxShadow: `0 0 12px ${club.homeKitColor}40`,
+                          boxShadow: `0 0 12px ${club!.homeKitColor}40`,
                         }}
                       >
                         {player.shirtNumber || idx + 1}

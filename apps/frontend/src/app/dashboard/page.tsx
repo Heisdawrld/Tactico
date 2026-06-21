@@ -10,6 +10,7 @@ import {
 import { Club } from '@/types/club';
 import { Player } from '@/types/player';
 import { useAppStore } from '@/lib/store';
+import { useSelectedClub } from '@/lib/useSelectedClub';
 import { playSfx } from '@/lib/audio';
 import { cn, formatCurrency, formatNumber } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
@@ -33,16 +34,12 @@ import {
  * Falls back to API if offline data unavailable.
  */
 export default function DashboardPage() {
-  const selectedClubId = useAppStore((s) => s.selectedClubId);
+  const { club, hydrated } = useSelectedClub();
   const currentSeason = useAppStore((s) => s.currentSeason);
   const currentWeek = useAppStore((s) => s.currentWeek);
   const advanceWeek = useAppStore((s) => s.advanceWeek);
 
   // Use offline data — instant, no API calls, no loading state
-  const club = useMemo(() => {
-    if (!selectedClubId) return null;
-    return getOfflineClub(selectedClubId) || OFFLINE_CLUBS[0];
-  }, [selectedClubId]);
 
   const players = useMemo(() => {
     if (!club) return [];

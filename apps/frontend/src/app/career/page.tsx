@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
+import { useSelectedClub } from '@/lib/useSelectedClub';
 import { playRawClick } from '@/lib/audio';
 import { cn } from '@/lib/utils';
 import { PageTransition, StaggerContainer, StaggerItem, AnimatedCounter } from '@/components/ui/motion';
@@ -14,12 +15,11 @@ import { getOfflineClub, getOfflineLeagueTable, OFFLINE_CLUBS } from '@/lib/game
 import { Trophy, TrendingUp, Target, ChevronRight, Award, Star } from 'lucide-react';
 
 export default function CareerPage() {
-  const selectedClubId = useAppStore((s) => s.selectedClubId);
+  const { club, hydrated } = useSelectedClub();
   const currentWeek = useAppStore((s) => s.currentWeek);
   const advanceWeek = useAppStore((s) => s.advanceWeek);
-  const club = useMemo(() => getOfflineClub(selectedClubId || 1) || OFFLINE_CLUBS[0], [selectedClubId]);
-  const leagueTable = useMemo(() => getOfflineLeagueTable(club.leagueId || 1), [club]);
-  const myRow = leagueTable.find((r) => r.clubId === club.id);
+  const leagueTable = useMemo(() => getOfflineLeagueTable(club!.leagueId || 1), [club]);
+  const myRow = leagueTable.find((r) => r.clubId === club!.id);
 
   const [objectives] = useState([
     { id: 1, label: 'Qualify for Champions League', target: 'Top 4', progress: 75, priority: 'high', deadline: 'End of Season' },
@@ -35,7 +35,7 @@ export default function CareerPage() {
           <StaggerItem>
             <div className="section-header !mb-1">Career Mode</div>
             <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">Season 2026</h1>
-            <p className="text-tertiary-c text-sm mt-1">{club.name} · Week {currentWeek}</p>
+            <p className="text-tertiary-c text-sm mt-1">{club!.name} · Week {currentWeek}</p>
           </StaggerItem>
           <StaggerItem>
             <Button variant="gold" size="md" onClick={() => { advanceWeek(); playRawClick(0.2); }}>
@@ -106,13 +106,13 @@ export default function CareerPage() {
         {/* League Table */}
         <Card className="mb-6">
           <CardHeader>
-            <div className="flex items-center gap-2"><Trophy className="w-4 h-4 text-gold-300" /><CardTitle>{club.league} Table</CardTitle></div>
+            <div className="flex items-center gap-2"><Trophy className="w-4 h-4 text-gold-300" /><CardTitle>{club!.league} Table</CardTitle></div>
             <CardDescription>Updated through Week {currentWeek}</CardDescription>
           </CardHeader>
           <CardContent className="!p-0">
             <div className="divide-y divide-white/3">
               {leagueTable.map((row, idx) => {
-                const isMe = row.clubId === club.id;
+                const isMe = row.clubId === club!.id;
                 return (
                   <motion.div
                     key={row.clubId}

@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Player, PlayerPosition } from '@/types/player';
 import { useAppStore } from '@/lib/store';
+import { useSelectedClub } from '@/lib/useSelectedClub';
 import { playSfx } from '@/lib/audio';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getOfflineSquad, OFFLINE_CLUBS, getOfflineClub } from '@/lib/game-data';
@@ -61,31 +62,27 @@ function getPositionGroup(position: string | undefined | null): PositionGroup {
 type SortBy = 'overallRating' | 'potentialRating' | 'age' | 'wage' | 'marketValue';
 
 export default function SquadPage() {
-  const selectedClubId = useAppStore((s) => s.selectedClubId);
+  const { club, hydrated } = useSelectedClub();
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [positionFilter, setPositionFilter] = useState<PositionGroup | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>('overallRating');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
+  // Load squad from offline data — instant, no API calls
   useEffect(() => {
-    if (!selectedClubId) {
+    if (!hydrated) return; // Wait for Zustand to read localStorage
+
+    if (!club) {
       setLoading(false);
       return;
     }
-    // Use offline data — instant, no API calls
-    const squad = getOfflineSquad(selectedClubId);
-    if (squad.length === 0) {
-      // Fallback: try first offline club
-      const fallback = OFFLINE_CLUBS[0];
-      setPlayers(getOfflineSquad(fallback.id));
-    } else {
-      setPlayers(squad);
-    }
+
+    const squad = getOfflineSquad(club.id);
+    setPlayers(squad.length > 0 ? squad : getOfflineSquad(OFFLINE_CLUBS[0].id));
     setLoading(false);
-  }, [selectedClubId]);
+  }, [club, hydrated]);
 
   // ---------- DERIVED DATA ----------
   const filtered = useMemo(() => {
@@ -114,8 +111,8 @@ export default function SquadPage() {
     return { avgRating, totalWages, totalValue, avgAge, squadSize: players.length };
   }, [players]);
 
-  // ---------- LOADING ----------
-  if (loading) {
+  // ---------- LOADING (waiting for hydration) ----------
+  if (loading || !hydrated) {
     return (
       <PageTransition>
         <div className="flex flex-col items-center justify-center h-full p-12 gap-4">
@@ -127,7 +124,7 @@ export default function SquadPage() {
   }
 
   // ---------- NO CLUB SELECTED ----------
-  if (!selectedClubId) {
+  if (!club) {
     return (
       <PageTransition>
         <div className="flex flex-col items-center justify-center h-full p-12 gap-6 text-center">
@@ -146,7 +143,7 @@ export default function SquadPage() {
   }
 
   // ---------- ERROR / EMPTY ----------
-  if (error || players.length === 0) {
+  if (players.length === 0) {
     return (
       <PageTransition>
         <div className="flex flex-col items-center justify-center h-full p-12 gap-4 text-center">
@@ -154,8 +151,8 @@ export default function SquadPage() {
             <Users className="w-7 h-7 text-warning" />
           </div>
           <div className="space-y-1">
-            <p className="text-sm font-medium text-primary-c">{error || 'No players found.'}</p>
-            <p className="text-xs text-tertiary-c">The player sync may still be running in the background.</p>
+            <p className="text-sm font-medium text-primary-c">No players found.</p>
+            <p className="text-xs text-tertiary-c">Try refreshing the page.</p>
           </div>
           <Button variant="secondary" size="sm" onClick={() => window.location.reload()}>
             Refresh

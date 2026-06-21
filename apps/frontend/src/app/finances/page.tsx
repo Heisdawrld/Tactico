@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
+import { useSelectedClub } from '@/lib/useSelectedClub';
 import { playRawClick } from '@/lib/audio';
 import { cn, formatCurrency } from '@/lib/utils';
 import { PageTransition, StaggerContainer, StaggerItem, AnimatedCounter } from '@/components/ui/motion';
@@ -21,10 +22,9 @@ const FACILITIES = [
 ];
 
 export default function FinancesPage() {
-  const selectedClubId = useAppStore((s) => s.selectedClubId);
-  const club = useMemo(() => getOfflineClub(selectedClubId || 1) || OFFLINE_CLUBS[0], [selectedClubId]);
-  const finances = useMemo(() => getOfflineFinances(club.id), [club]);
-  const squad = useMemo(() => getOfflineSquad(club.id), [club]);
+  const { club, hydrated } = useSelectedClub();
+  const finances = useMemo(() => getOfflineFinances(club!.id), [club]);
+  const squad = useMemo(() => getOfflineSquad(club!.id), [club]);
   const totalWages = squad.reduce((s, p) => s + (p.wage || 0), 0);
 
   const income = finances.income.sponsorships + finances.income.tickets + finances.income.tv + finances.income.merchandise;
@@ -38,7 +38,7 @@ export default function FinancesPage() {
           <StaggerItem>
             <div className="section-header !mb-1">Club Finances</div>
             <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">Finances</h1>
-            <p className="text-tertiary-c text-sm mt-1">{club.name} · Weekly Overview</p>
+            <p className="text-tertiary-c text-sm mt-1">{club!.name} · Weekly Overview</p>
           </StaggerItem>
           <StaggerItem>
             <Badge variant={weeklyNet >= 0 ? 'success' : 'danger'} size="md">
@@ -52,7 +52,7 @@ export default function FinancesPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <StatBlock
             label="BALANCE"
-            value={<AnimatedCounter value={club.balance} format="currency" />}
+            value={<AnimatedCounter value={club!.balance} format="currency" />}
             tone="gold"
             icon={<Wallet className="w-3.5 h-3.5" />}
             delta={2}
@@ -60,19 +60,19 @@ export default function FinancesPage() {
           />
           <StatBlock
             label="WAGE BUDGET"
-            value={<AnimatedCounter value={club.wageBudget} format="currency" />}
+            value={<AnimatedCounter value={club!.wageBudget} format="currency" />}
             tone="danger"
             icon={<TrendingDown className="w-3.5 h-3.5" />}
           />
           <StatBlock
             label="TRANSFER BUDGET"
-            value={<AnimatedCounter value={club.transferBudget} format="currency" />}
+            value={<AnimatedCounter value={club!.transferBudget} format="currency" />}
             tone="success"
             icon={<TrendingUp className="w-3.5 h-3.5" />}
           />
           <StatBlock
             label="SQUAD VALUE"
-            value={<AnimatedCounter value={club.marketValue} format="currency" />}
+            value={<AnimatedCounter value={club!.marketValue} format="currency" />}
             tone="gold"
             icon={<Wallet className="w-3.5 h-3.5" />}
           />
@@ -107,7 +107,7 @@ export default function FinancesPage() {
               <FinanceRow label="Player Wages" value={finances.expenses.wages} tone="danger" />
               <FinanceRow label="Stadium Maintenance" value={finances.expenses.maintenance} tone="danger" />
               <FinanceRow label="Staff Salaries" value={Math.round(finances.expenses.wages * 0.15)} tone="danger" />
-              <FinanceRow label="Youth Academy" value={Math.round(club.balance * 0.0005)} tone="danger" />
+              <FinanceRow label="Youth Academy" value={Math.round(club!.balance * 0.0005)} tone="danger" />
               <div className="pt-2 border-t border-white/5 flex items-center justify-between">
                 <span className="text-xs font-bold text-tertiary-c uppercase tracking-widest font-mono">TOTAL</span>
                 <span className="font-mono font-bold text-danger tabular-nums">-{formatCurrency(expenses, 'EUR', true)}</span>
@@ -124,7 +124,7 @@ export default function FinancesPage() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {FACILITIES.map((f) => {
-              const level = f.levelKey === 'stadiumCapacity' ? Math.min(5, Math.floor((club.stadiumCapacity || 0) / 20000)) : club[f.levelKey];
+              const level = f.levelKey === 'stadiumCapacity' ? Math.min(5, Math.floor((club!.stadiumCapacity || 0) / 20000)) : club![f.levelKey as keyof typeof club] as number;
               const upgradeCost = (level || 0) * 25_000_000;
               return (
                 <div key={f.id} className="p-3 rounded-md bg-surface-2/50 border border-white/3">
