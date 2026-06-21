@@ -8,7 +8,6 @@ import { useAppStore } from '@/lib/store';
 import { playRawClick } from '@/lib/audio';
 import { getCrowdAudio } from '@/lib/crowd-audio';
 import { cn } from '@/lib/utils';
-import { PageTransition } from '@/components/ui/motion';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -52,8 +51,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <PageTransition>
-      <div className="px-6 lg:px-8 py-6 pb-12 max-w-3xl mx-auto">
+    <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12 max-w-3xl mx-auto relative z-10">
         <div className="mb-6">
           <div className="section-header !mb-1">Configuration</div>
           <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">
@@ -203,7 +201,6 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
-    </PageTransition>
   );
 }
 
