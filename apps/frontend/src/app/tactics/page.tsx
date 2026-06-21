@@ -119,9 +119,10 @@ export default function TacticsPage() {
 
               {/* Pitch */}
               <div
-                className="relative w-full rounded-lg overflow-hidden border border-white/8"
+                className="relative w-full max-w-full rounded-lg overflow-hidden border border-white/8 mx-auto"
                 style={{
                   aspectRatio: '3 / 4',
+                  maxWidth: '500px',
                   background: 'linear-gradient(180deg, #0d2818 0%, #0a1f12 50%, #0d2818 100%)',
                 }}
               >

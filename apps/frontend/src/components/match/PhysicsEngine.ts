@@ -21,7 +21,12 @@ export class PhysicsEngine {
   }
 
   public init(container: HTMLElement) {
-    container.appendChild(this.app.view as HTMLCanvasElement);
+    const canvas = this.app.view as HTMLCanvasElement;
+    // Scale the canvas to fit the container width
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.display = 'block';
+    container.appendChild(canvas);
     this.app.stage.addChild(this.graphics);
     this.createPitchBoundaries();
     Matter.Engine.run(this.engine);

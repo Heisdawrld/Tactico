@@ -382,9 +382,9 @@ export default function MatchSimulation() {
 
           {/* Score */}
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-            <div className="text-3xl sm:text-5xl font-black font-mono text-gold-300 tabular-nums">{matchState.score.home}</div>
+            <div className="text-2xl sm:text-4xl lg:text-5xl font-black font-mono text-gold-300 tabular-nums">{matchState.score.home}</div>
             <div className="text-lg text-tertiary-c">-</div>
-            <div className="text-3xl sm:text-5xl font-black font-mono text-gold-300 tabular-nums">{matchState.score.away}</div>
+            <div className="text-2xl sm:text-4xl lg:text-5xl font-black font-mono text-gold-300 tabular-nums">{matchState.score.away}</div>
           </div>
 
           {/* Away */}
