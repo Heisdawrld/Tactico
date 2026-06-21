@@ -8,7 +8,7 @@ import { useAppStore } from '@/lib/store';
 import { useSelectedClub } from '@/lib/useSelectedClub';
 import { playRawClick } from '@/lib/audio';
 import { cn } from '@/lib/utils';
-import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/motion';
+import { StaggerContainer, StaggerItem } from '@/components/ui/motion';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -77,7 +77,7 @@ export default function PressPage() {
   if (!club) return null;
 
   return (
-    <PageTransition>
+    <div className="relative z-10">
       <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12 max-w-4xl mx-auto">
         <StaggerContainer className="mb-6" stagger={0.05}>
           <StaggerItem>
@@ -219,6 +219,6 @@ export default function PressPage() {
           </Card>
         </div>
       </div>
-    </PageTransition>
+    </div>
   );
 }

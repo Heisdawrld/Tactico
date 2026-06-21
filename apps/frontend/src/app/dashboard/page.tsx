@@ -20,7 +20,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { StatBlock, RatingBadge, ProgressBar, Sparkline } from '@/components/ui/Stat';
 import {
-  PageTransition, StaggerContainer, StaggerItem,
+  StaggerContainer, StaggerItem,
   AnimatedCounter, FadeInOnView, GlowOrb, ParticleField,
   ShimmerText, ScaleIn,
 } from '@/components/ui/motion';
@@ -75,7 +75,7 @@ export default function DashboardPage() {
   // ---------- NO CLUB SELECTED ----------
   if (!club) {
     return (
-      <PageTransition>
+      <div className="relative z-10">
         <div className="flex flex-col items-center justify-center h-full p-12 gap-6 text-center">
           <div className="w-20 h-20 rounded-full bg-gold-soft flex items-center justify-center">
             <Trophy className="w-10 h-10 text-gold-300" />
@@ -93,13 +93,13 @@ export default function DashboardPage() {
             </Button>
           </Link>
         </div>
-      </PageTransition>
+      </div>
     );
   }
 
   // ---------- MAIN DASHBOARD ----------
   return (
-    <PageTransition>
+    <div className="relative z-10">
       <div className="relative">
         {/* Decorative background */}
         <GlowOrb size={500} position="top-right" opacity={0.08} />
@@ -527,7 +527,7 @@ export default function DashboardPage() {
           </Card>
         </section>
       </div>
-    </PageTransition>
+    </div>
   );
 }
 

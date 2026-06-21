@@ -8,7 +8,7 @@ import { useAppStore } from '@/lib/store';
 import { useSelectedClub } from '@/lib/useSelectedClub';
 import { playRawClick } from '@/lib/audio';
 import { cn, formatCurrency } from '@/lib/utils';
-import { PageTransition, StaggerContainer, StaggerItem, AnimatedCounter } from '@/components/ui/motion';
+import { StaggerContainer, StaggerItem, AnimatedCounter } from '@/components/ui/motion';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -37,7 +37,7 @@ export default function FinancesPage() {
   if (!club) return null;
 
   return (
-    <PageTransition>
+    <div className="relative z-10">
       <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12 max-w-5xl mx-auto">
         <StaggerContainer className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6" stagger={0.05}>
           <StaggerItem>
@@ -154,7 +154,7 @@ export default function FinancesPage() {
           </CardContent>
         </Card>
       </div>
-    </PageTransition>
+    </div>
   );
 }
 

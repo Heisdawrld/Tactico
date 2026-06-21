@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { RatingBadge, ProgressBar, StatBlock } from '@/components/ui/Stat';
 import {
-  PageTransition, StaggerContainer, StaggerItem, FadeInOnView,
+  StaggerContainer, StaggerItem, FadeInOnView,
   AnimatedCounter,
 } from '@/components/ui/motion';
 import {
@@ -110,7 +110,7 @@ export default function SquadPage() {
   // ---------- ERROR / EMPTY ----------
   if (players.length === 0) {
     return (
-      <PageTransition>
+      <div className="relative z-10">
         <div className="flex flex-col items-center justify-center h-full p-12 gap-4 text-center">
           <div className="w-14 h-14 rounded-full bg-warning/15 flex items-center justify-center">
             <Users className="w-7 h-7 text-warning" />
@@ -123,13 +123,13 @@ export default function SquadPage() {
             Refresh
           </Button>
         </div>
-      </PageTransition>
+      </div>
     );
   }
 
   // ---------- MAIN RENDER ----------
   return (
-    <PageTransition>
+    <div className="relative z-10">
       <div className="px-6 lg:px-8 py-6 pb-12">
         {/* ---------- HEADER ---------- */}
         <StaggerContainer className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6" stagger={0.05}>
@@ -307,7 +307,7 @@ export default function SquadPage() {
           )}
         </AnimatePresence>
       </div>
-    </PageTransition>
+    </div>
   );
 }
 
