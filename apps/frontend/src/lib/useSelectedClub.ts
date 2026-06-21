@@ -1,30 +1,34 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useAppStore } from '@/lib/store';
 import { getOfflineClub, OFFLINE_CLUBS } from '@/lib/game-data';
 import type { Club } from '@/types/club';
 
 /**
- * useSelectedClub — handles Zustand hydration correctly.
+ * useSelectedClub — the definitive hydration-safe hook.
  *
- * Uses typeof window check for synchronous hydration detection.
- * During SSR: window is undefined → hydrated=false → loading state
- * On client: window exists → hydrated=true → real data
+ * Uses the standard Next.js "mounted" pattern:
+ * 1. SSR + first client render: mounted=false → club=null → page returns null
+ * 2. After useEffect: mounted=true → club from localStorage → page renders content
+ *
+ * This avoids BOTH:
+ * - SSR crashes (club is null → return null → no crash)
+ * - Hydration mismatches (SSR and first client render both return null)
  */
 export function useSelectedClub(): { club: Club | null; hydrated: boolean } {
   const selectedClubId = useAppStore((s) => s.selectedClubId);
-  
-  // Synchronous hydration check — no useEffect needed
-  // On the client, window is always defined after the first render
-  // During SSR, window is undefined
-  const hydrated = typeof window !== 'undefined';
-  
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const club = useMemo(() => {
-    if (!hydrated) return null;
+    if (!mounted) return null;
     if (!selectedClubId) return null;
     return getOfflineClub(selectedClubId) || OFFLINE_CLUBS[0];
-  }, [selectedClubId, hydrated]);
+  }, [selectedClubId, mounted]);
 
-  return { club, hydrated };
+  return { club, hydrated: mounted };
 }
