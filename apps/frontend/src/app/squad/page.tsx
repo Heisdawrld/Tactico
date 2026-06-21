@@ -1,4 +1,6 @@
-'use client';
+'use client'
+
+export const dynamic = 'force-dynamic';
 
 import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
