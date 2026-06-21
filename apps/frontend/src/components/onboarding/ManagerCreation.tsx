@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ArrowLeft, User } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ArrowLeft, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -194,30 +194,23 @@ export function ManagerCreation({ onComplete, onBack }: ManagerCreationProps) {
         </motion.div>
       </div>
 
-      {/* Continue bar */}
-      <AnimatePresence>
-        {canContinue && (
-          <motion.div
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 80, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed bottom-0 left-0 right-0 px-6 py-4 safe-area-bottom glass-heavy border-t border-gold-soft"
-          >
-            <button
-              onClick={onComplete}
-              className="w-full max-w-2xl mx-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-md font-display font-bold text-base text-black transition-transform hover:scale-[1.02] active:scale-100"
-              style={{
-                background: 'linear-gradient(135deg, #FFD700 0%, #B0830C 100%)',
-                boxShadow: '0 4px 20px rgba(255, 215, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4)',
-              }}
-            >
-              Begin Career
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Continue bar — always visible, disabled until valid */}
+      <div className="sticky bottom-0 px-6 py-4 safe-area-bottom glass-heavy border-t border-white/5">
+        <button
+          onClick={canContinue ? onComplete : undefined}
+          disabled={!canContinue}
+          className={`w-full max-w-2xl mx-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-md font-display font-bold text-base transition-all
+            ${canContinue
+              ? 'text-black hover:scale-[1.02] active:scale-100'
+              : 'text-tertiary-c bg-surface-3 cursor-not-allowed'}`}
+          style={canContinue ? {
+            background: 'linear-gradient(135deg, #FFD700 0%, #B0830C 100%)',
+            boxShadow: '0 4px 20px rgba(255, 215, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4)',
+          } : {}}
+        >
+          {canContinue ? 'Begin Career' : 'Complete all fields to continue'}
+        </button>
+      </div>
     </motion.div>
   );
 }

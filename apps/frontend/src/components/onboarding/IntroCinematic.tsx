@@ -373,7 +373,7 @@ export function IntroCinematic({ onComplete }: IntroCinematicProps) {
             Tap to Begin
           </motion.p>
           <p className="text-quaternary-c text-[10px] font-mono tracking-widest">
-            🔊 Best with sound on
+            Best experienced with sound on
           </p>
         </motion.div>
       )}

@@ -106,9 +106,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <TopBar />
 
-        <div className="flex flex-1 min-h-0">
+        <div className="flex flex-1 min-h-0 relative z-10">
           {/* Main content area */}
-          <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden relative">
+          <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden relative z-10">
             <AnimatePresence mode="wait">
               <motion.div
                 key={pathname}
