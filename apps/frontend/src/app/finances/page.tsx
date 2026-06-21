@@ -25,8 +25,8 @@ const FACILITIES = [
 
 export default function FinancesPage() {
   const { club, hydrated } = useSelectedClub();
-  const finances = useMemo(() => getOfflineFinances(club!.id), [club]);
-  const squad = useMemo(() => getOfflineSquad(club!.id), [club]);
+  const finances = useMemo(() => club ? getOfflineFinances(club.id) : { income: { sponsorships: 0, tickets: 0, tv: 0, merchandise: 0, transfers: 0 }, expenses: { wages: 0, maintenance: 0, transfers: 0, fines: 0 }, weeklyNet: 0 }, [club]);
+  const squad = useMemo(() => club ? getOfflineSquad(club.id) : [], [club]);
   const totalWages = squad.reduce((s, p) => s + (p.wage || 0), 0);
 
   const income = finances.income.sponsorships + finances.income.tickets + finances.income.tv + finances.income.merchandise;

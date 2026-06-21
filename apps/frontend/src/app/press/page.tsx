@@ -51,7 +51,7 @@ const PRESS_QUESTIONS = [
 
 export default function PressPage() {
   const { club, hydrated } = useSelectedClub();
-  const news = useMemo(() => getOfflineNews(club!.id), [club]);
+  const news = useMemo(() => club ? getOfflineNews(club.id) : [], [club]);
 
   const [currentQ, setCurrentQ] = useState(0);
   const [morale, setMorale] = useState(70);

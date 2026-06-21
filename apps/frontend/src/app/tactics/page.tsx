@@ -58,7 +58,7 @@ const TACTICAL_STYLES = [
 
 export default function TacticsPage() {
   const { club, hydrated } = useSelectedClub();
-  const squad = useMemo(() => (club ? getOfflineSquad(club!.id) : []), [club]);
+  const squad = useMemo(() => (club ? getOfflineSquad(club.id) : []), [club]);
   const [formation, setFormation] = useState('4-3-3');
   const [style, setStyle] = useState('possession');
   const [pressing, setPressing] = useState(60);

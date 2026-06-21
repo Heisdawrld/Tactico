@@ -18,7 +18,7 @@ import { Calendar, ChevronRight, PlayCircle, Trophy, MapPin, Clock } from 'lucid
 
 export default function MatchesPage() {
   const { club, hydrated } = useSelectedClub();
-  const fixtures = useMemo(() => getOfflineFixtures(club!.id), [club]);
+  const fixtures = useMemo(() => club ? getOfflineFixtures(club.id) : [], [club]);
 
   const played = fixtures.filter((f) => f.status === 'finished');
   const upcoming = fixtures.filter((f) => f.status !== 'finished');

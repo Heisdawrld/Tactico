@@ -25,7 +25,7 @@ const TRAINING_CATEGORIES = [
 
 export default function TrainingPage() {
   const { club, hydrated } = useSelectedClub();
-  const squad = useMemo(() => getOfflineSquad(club!.id), [club]);
+  const squad = useMemo(() => club ? getOfflineSquad(club.id) : [], [club]);
 
   const [intensity, setIntensity] = useState<Record<string, number>>({
     technical: 60,

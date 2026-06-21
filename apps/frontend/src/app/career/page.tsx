@@ -20,8 +20,8 @@ export default function CareerPage() {
   const { club, hydrated } = useSelectedClub();
   const currentWeek = useAppStore((s) => s.currentWeek);
   const advanceWeek = useAppStore((s) => s.advanceWeek);
-  const leagueTable = useMemo(() => getOfflineLeagueTable(club!.leagueId || 1), [club]);
-  const myRow = leagueTable.find((r) => r.clubId === club!.id);
+  const leagueTable = useMemo(() => club ? getOfflineLeagueTable(club.leagueId || 1) : [], [club]);
+  const myRow = leagueTable.find((r) => club && r.clubId === club.id);
 
   const [objectives] = useState([
     { id: 1, label: 'Qualify for Champions League', target: 'Top 4', progress: 75, priority: 'high', deadline: 'End of Season' },

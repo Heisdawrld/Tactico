@@ -28,7 +28,7 @@ export default function TransfersPage() {
   // Build transfer market from all clubs' squads (excluding my club)
   const marketPlayers = useMemo(() => {
     const all: any[] = [];
-    OFFLINE_CLUBS.filter((c) => c.id !== myClub!.id).forEach((c) => {
+    OFFLINE_CLUBS.filter((c) => !myClub || c.id !== myClub.id).forEach((c) => {
       const squad = getOfflineSquad(c.id);
       squad.forEach((p) => {
         all.push({ ...p, clubName: c.name, clubShort: c.shortName, clubColor: c.homeKitColor });
