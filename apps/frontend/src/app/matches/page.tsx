@@ -30,17 +30,7 @@ export default function MatchesPage() {
   const losses = played.length - wins - draws;
 
 
-  // ---------- HYDRATION GUARD — prevent SSR crash when club is null ----------
-  if (!hydrated || !club) {
-    return (
-      <PageTransition>
-        <div className="flex flex-col items-center justify-center h-full p-12 gap-4">
-          <div className="w-12 h-12 rounded-full border-2 border-gold-soft border-t-gold-300 animate-spin" />
-          <p className="text-xs text-tertiary-c font-mono tracking-widest">LOADING…</p>
-        </div>
-      </PageTransition>
-    );
-  }
+  if (!club) return null;
 
   return (
     <PageTransition>

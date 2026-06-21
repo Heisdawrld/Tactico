@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Player, PlayerPosition } from '@/types/player';
 import { useAppStore } from '@/lib/store';
@@ -64,27 +64,18 @@ function getPositionGroup(position: string | undefined | null): PositionGroup {
 type SortBy = 'overallRating' | 'potentialRating' | 'age' | 'wage' | 'marketValue';
 
 export default function SquadPage() {
-  const { club, hydrated } = useSelectedClub();
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { club } = useSelectedClub();
   const [search, setSearch] = useState('');
   const [positionFilter, setPositionFilter] = useState<PositionGroup | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>('overallRating');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
-  // Load squad from offline data — instant, no API calls
-  useEffect(() => {
-    if (!hydrated) return; // Wait for Zustand to read localStorage
-
-    if (!club) {
-      setLoading(false);
-      return;
-    }
-
+  // Use useMemo like dashboard — no useEffect, no loading state
+  const players = useMemo(() => {
+    if (!club) return [];
     const squad = getOfflineSquad(club.id);
-    setPlayers(squad.length > 0 ? squad : getOfflineSquad(OFFLINE_CLUBS[0].id));
-    setLoading(false);
-  }, [club, hydrated]);
+    return squad.length > 0 ? squad : getOfflineSquad(OFFLINE_CLUBS[0].id);
+  }, [club]);
 
   // ---------- DERIVED DATA ----------
   const filtered = useMemo(() => {
@@ -113,36 +104,8 @@ export default function SquadPage() {
     return { avgRating, totalWages, totalValue, avgAge, squadSize: players.length };
   }, [players]);
 
-  // ---------- LOADING (waiting for hydration) ----------
-  if (loading || !hydrated) {
-    return (
-      <PageTransition>
-        <div className="flex flex-col items-center justify-center h-full p-12 gap-4">
-          <div className="w-12 h-12 rounded-full border-2 border-gold-soft border-t-gold-300 animate-spin" />
-          <p className="text-xs text-tertiary-c font-mono tracking-widest">LOADING SQUAD…</p>
-        </div>
-      </PageTransition>
-    );
-  }
-
   // ---------- NO CLUB SELECTED ----------
-  if (!club) {
-    return (
-      <PageTransition>
-        <div className="flex flex-col items-center justify-center h-full p-12 gap-6 text-center">
-          <div className="w-20 h-20 rounded-full bg-gold-soft flex items-center justify-center">
-            <Users className="w-10 h-10 text-gold-300" />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-3xl font-headline font-bold gradient-text-premium">No Club Selected</h1>
-            <p className="text-tertiary-c text-sm max-w-md">
-              Choose a club to view your squad.
-            </p>
-          </div>
-        </div>
-      </PageTransition>
-    );
-  }
+  if (!club) return null;
 
   // ---------- ERROR / EMPTY ----------
   if (players.length === 0) {
