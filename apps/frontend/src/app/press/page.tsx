@@ -51,7 +51,18 @@ const PRESS_QUESTIONS = [
 
 export default function PressPage() {
   const { club, hydrated } = useSelectedClub();
-  const news = useMemo(() => club ? getOfflineNews(club.id) : [], [club]);
+  const pressEvents = useAppStore((s) => s.pressEvents);
+  const news = useMemo(() => {
+    const staticNews = club ? getOfflineNews(club.id) : [];
+    const dynamicNews = pressEvents.map((e) => ({
+      id: e.id + 1000,
+      source: 'Tactico Wire',
+      headline: e.headline,
+      time: e.time,
+      category: e.category,
+    }));
+    return [...dynamicNews, ...staticNews].slice(0, 10);
+  }, [club, pressEvents]);
 
   const [currentQ, setCurrentQ] = useState(0);
   const [morale, setMorale] = useState(70);

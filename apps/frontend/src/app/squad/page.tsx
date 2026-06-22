@@ -71,11 +71,13 @@ export default function SquadPage() {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 
   // Use useMemo like dashboard — no useEffect, no loading state
+  const getSquad = useAppStore((s) => s.getSquad);
+
   const players = useMemo(() => {
     if (!club) return [];
-    const squad = getOfflineSquad(club.id);
+    const squad = getSquad(club.id);
     return squad.length > 0 ? squad : getOfflineSquad(OFFLINE_CLUBS[0].id);
-  }, [club]);
+  }, [club, getSquad]);
 
   // ---------- DERIVED DATA ----------
   const filtered = useMemo(() => {

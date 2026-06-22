@@ -289,6 +289,31 @@ importers:
         specifier: ^5.3.0
         version: 5.9.3
 
+  packages/finance-engine:
+    dependencies:
+      '@tactico/database':
+        specifier: workspace:*
+        version: link:../database
+      '@tactico/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@types/jest':
+        specifier: ^29.0.0
+        version: 29.5.14
+      eslint:
+        specifier: ^8.0.0
+        version: 8.57.1
+      jest:
+        specifier: ^29.0.0
+        version: 29.7.0
+      ts-jest:
+        specifier: ^29.0.0
+        version: 29.4.11(@babel/core@7.29.7)(jest@29.7.0)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.3
+
   packages/shared:
     devDependencies:
       eslint:

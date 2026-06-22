@@ -1,10 +1,18 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Matter from 'matter-js';
 import { PhysicsEngine } from './PhysicsEngine';
 import { useAppStore } from '@/lib/store';
-import { getOfflineClub, getOfflineSquad, getOfflineFixtures, OFFLINE_CLUBS } from '@/lib/game-data';
+import { getOfflineClub, OFFLINE_CLUBS } from '@/lib/game-data';
+import { getNextUserFixture } from '@/lib/career-engine';
+import {
+  buildMatchFormation,
+  mirrorFormationForAway,
+  type MatchRoleConfig,
+  type FormationId,
+} from '@/lib/formations';
 import { playRawClick } from '@/lib/audio';
 import { getCrowdAudio } from '@/lib/crowd-audio';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -30,35 +38,6 @@ const GOAL_X_HOME = 0;
 const GOAL_X_AWAY = 1050;
 
 type TeamSide = 'home' | 'away';
-
-interface RoleConfig {
-  pos: string;
-  x: number; y: number; // Base formation position (home side, attacking right)
-  role: 'GK' | 'DEF' | 'MID' | 'ATT';
-  stayBackWeight: number; // 0-1, how much they stay back when team attacks
-  pressWeight: number;    // 0-1, how aggressively they press when defending
-}
-
-// 4-3-3 formation — positions are for home team (attacking right)
-const FORMATION: RoleConfig[] = [
-  { pos: 'GK',  x: 80,  y: 340, role: 'GK',  stayBackWeight: 1.0, pressWeight: 0.0 },
-  { pos: 'LB',  x: 200, y: 120, role: 'DEF', stayBackWeight: 0.8, pressWeight: 0.2 },
-  { pos: 'CB',  x: 180, y: 280, role: 'DEF', stayBackWeight: 0.85, pressWeight: 0.3 },
-  { pos: 'CB',  x: 180, y: 400, role: 'DEF', stayBackWeight: 0.85, pressWeight: 0.3 },
-  { pos: 'RB',  x: 200, y: 560, role: 'DEF', stayBackWeight: 0.8, pressWeight: 0.2 },
-  { pos: 'CDM', x: 350, y: 340, role: 'MID', stayBackWeight: 0.5, pressWeight: 0.5 },
-  { pos: 'CM',  x: 450, y: 250, role: 'MID', stayBackWeight: 0.3, pressWeight: 0.6 },
-  { pos: 'CM',  x: 450, y: 430, role: 'MID', stayBackWeight: 0.3, pressWeight: 0.6 },
-  { pos: 'RW',  x: 650, y: 150, role: 'ATT', stayBackWeight: 0.1, pressWeight: 0.4 },
-  { pos: 'ST',  x: 700, y: 340, role: 'ATT', stayBackWeight: 0.05, pressWeight: 0.3 },
-  { pos: 'LW',  x: 650, y: 530, role: 'ATT', stayBackWeight: 0.1, pressWeight: 0.4 },
-];
-
-// Mirror for away team (attacking left)
-const FORMATION_AWAY: RoleConfig[] = FORMATION.map(p => ({
-  ...p,
-  x: PITCH_W - p.x,
-}));
 
 interface MatchPlayer {
   id: number;
@@ -88,19 +67,53 @@ interface MatchState {
 }
 
 export default function MatchSimulation() {
+  const router = useRouter();
   const selectedClubId = useAppStore((s) => s.selectedClubId);
   const audioEnabled = useAppStore((s) => s.audioEnabled);
+  const fixtures = useAppStore((s) => s.fixtures);
+  const getSquad = useAppStore((s) => s.getSquad);
+  const tactics = useAppStore((s) => s.tactics);
+  const recordMatchResult = useAppStore((s) => s.recordMatchResult);
+  const resultRecordedRef = useRef(false);
 
-  const { homeClub, awayClub, homeSquad, awaySquad } = useMemo(() => {
-    const home = getOfflineClub(selectedClubId || 1) || OFFLINE_CLUBS[0];
-    const fixtures = getOfflineFixtures(home.id);
-    const nextFixture = fixtures.find(f => f.status !== 'finished');
-    const awayId = nextFixture
-      ? (nextFixture.homeClubId === home.id ? nextFixture.awayClubId : nextFixture.homeClubId)
-      : OFFLINE_CLUBS.find(c => c.id !== home.id)!.id;
-    const away = getOfflineClub(awayId) || OFFLINE_CLUBS[1];
-    return { homeClub: home, awayClub: away, homeSquad: getOfflineSquad(home.id), awaySquad: getOfflineSquad(away.id) };
-  }, [selectedClubId]);
+  const activeFixture = useMemo(() => {
+    if (!selectedClubId) return null;
+    return getNextUserFixture(fixtures, selectedClubId);
+  }, [fixtures, selectedClubId]);
+
+  const { homeClub, awayClub, homeSquad, awaySquad, userIsHome } = useMemo(() => {
+    if (!activeFixture) {
+      const fallback = getOfflineClub(selectedClubId || 1) || OFFLINE_CLUBS[0];
+      return {
+        homeClub: fallback,
+        awayClub: OFFLINE_CLUBS[1],
+        homeSquad: getSquad(fallback.id),
+        awaySquad: getSquad(OFFLINE_CLUBS[1].id),
+        userIsHome: true,
+      };
+    }
+    const home = getOfflineClub(activeFixture.homeClubId) || OFFLINE_CLUBS[0];
+    const away = getOfflineClub(activeFixture.awayClubId) || OFFLINE_CLUBS[1];
+    return {
+      homeClub: home,
+      awayClub: away,
+      homeSquad: getSquad(home.id),
+      awaySquad: getSquad(away.id),
+      userIsHome: selectedClubId === activeFixture.homeClubId,
+    };
+  }, [activeFixture, selectedClubId, getSquad]);
+
+  const homeFormation = useMemo(() => {
+    const fid = (userIsHome ? tactics.formation : '4-3-3') as FormationId;
+    const t = userIsHome ? tactics : { ...tactics, pressing: 55, defensiveLine: 50, style: 'possession' as const };
+    return buildMatchFormation(fid, t.pressing, t.defensiveLine, t.style);
+  }, [tactics, userIsHome]);
+
+  const awayFormation = useMemo(() => {
+    const fid = (!userIsHome ? tactics.formation : '4-3-3') as FormationId;
+    const t = !userIsHome ? tactics : { ...tactics, pressing: 55, defensiveLine: 50, style: 'possession' as const };
+    return mirrorFormationForAway(buildMatchFormation(fid, t.pressing, t.defensiveLine, t.style));
+  }, [tactics, userIsHome]);
 
   const homePlayers = useMemo(() => [...homeSquad].sort((a, b) => b.overallRating - a.overallRating).slice(0, 11), [homeSquad]);
   const awayPlayers = useMemo(() => [...awaySquad].sort((a, b) => b.overallRating - a.overallRating).slice(0, 11), [awaySquad]);
@@ -131,12 +144,11 @@ export default function MatchSimulation() {
   useEffect(() => { matchStatusRef.current = matchState.matchStatus; }, [matchState.matchStatus]);
 
   // Build player objects from squads
-  const buildPlayers = (): MatchPlayer[] => {
+  const buildPlayers = useCallback((): MatchPlayer[] => {
     const all: MatchPlayer[] = [];
-    const formation = (team: TeamSide) => team === 'home' ? FORMATION : FORMATION_AWAY;
 
     homePlayers.forEach((p, i) => {
-      const cfg = formation('home')[i];
+      const cfg = homeFormation[i];
       if (!cfg) return;
       all.push({
         id: p.id, name: `${p.firstName} ${p.lastName || ''}`.trim(),
@@ -146,7 +158,7 @@ export default function MatchSimulation() {
       });
     });
     awayPlayers.forEach((p, i) => {
-      const cfg = formation('away')[i];
+      const cfg = awayFormation[i];
       if (!cfg) return;
       all.push({
         id: p.id + 10000, name: `${p.firstName} ${p.lastName || ''}`.trim(),
@@ -156,7 +168,7 @@ export default function MatchSimulation() {
       });
     });
     return all;
-  };
+  }, [homePlayers, awayPlayers, homeFormation, awayFormation]);
 
   // Init physics
   useEffect(() => {
@@ -183,7 +195,15 @@ export default function MatchSimulation() {
       if (timeIntervalRef.current) clearInterval(timeIntervalRef.current);
       engine.destroy();
     };
-  }, [homePlayers, awayPlayers, homeClub, awayClub]);
+  }, [homePlayers, awayPlayers, homeClub, awayClub, buildPlayers]);
+
+  // Record result when match finishes
+  useEffect(() => {
+    if (matchState.matchStatus !== 'finished' || resultRecordedRef.current) return;
+    if (!activeFixture) return;
+    resultRecordedRef.current = true;
+    recordMatchResult(activeFixture.id, matchState.score.home, matchState.score.away);
+  }, [matchState.matchStatus, matchState.score, activeFixture, recordMatchResult]);
 
   // ========== COLLISION HANDLING ==========
   const handleCollisions = (event: Matter.IEventCollision<Matter.Engine>) => {
@@ -517,6 +537,7 @@ export default function MatchSimulation() {
   const handleReset = () => {
     if (timeIntervalRef.current) clearInterval(timeIntervalRef.current);
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    resultRecordedRef.current = false;
     setMatchState({
       score: { home: 0, away: 0 }, time: 0, possession: 'home',
       matchStatus: 'waiting', currentEvent: 'Ready to kick off',
@@ -670,9 +691,13 @@ export default function MatchSimulation() {
                   <div className="text-primary-c">{homePossPct}% - {100 - homePossPct}%</div>
                 </div>
               </div>
-              <button onClick={handleReset}
-                className="flex items-center gap-2 px-6 py-3 rounded-md font-display font-bold text-black mx-auto"
+              <button onClick={() => { playRawClick(0.15); router.push('/matches'); }}
+                className="flex items-center gap-2 px-6 py-3 rounded-md font-display font-bold text-black mx-auto mb-2"
                 style={{ background: 'linear-gradient(135deg, #FFD700 0%, #B0830C 100%)' }}>
+                <ChevronRight className="w-4 h-4" /> Continue
+              </button>
+              <button onClick={handleReset}
+                className="flex items-center gap-2 px-6 py-3 rounded-md font-display font-medium text-tertiary-c mx-auto hover:text-primary-c transition-colors">
                 <RotateCcw className="w-4 h-4" /> Play Again
               </button>
             </motion.div>

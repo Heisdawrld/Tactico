@@ -13,15 +13,21 @@ import { StaggerContainer, StaggerItem } from '@/components/ui/motion';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { getOfflineClub, getOfflineFixtures, OFFLINE_CLUBS } from '@/lib/game-data';
+import { getOfflineClub, OFFLINE_CLUBS } from '@/lib/game-data';
 import { Calendar, ChevronRight, PlayCircle, Trophy, MapPin, Clock } from 'lucide-react';
 
 export default function MatchesPage() {
   const { club, hydrated } = useSelectedClub();
-  const fixtures = useMemo(() => club ? getOfflineFixtures(club.id) : [], [club]);
+  const fixtures = useAppStore((s) => s.fixtures);
+  const currentWeek = useAppStore((s) => s.currentWeek);
 
-  const played = fixtures.filter((f) => f.status === 'finished');
-  const upcoming = fixtures.filter((f) => f.status !== 'finished');
+  const clubFixtures = useMemo(() => {
+    if (!club) return [];
+    return fixtures.filter((f) => f.homeClubId === club.id || f.awayClubId === club.id);
+  }, [club, fixtures]);
+
+  const played = clubFixtures.filter((f) => f.status === 'finished');
+  const upcoming = clubFixtures.filter((f) => f.status !== 'finished');
   const wins = played.filter((f) => {
     const isHome = f.homeClubId === club!.id;
     return (isHome && (f.homeScore || 0) > (f.awayScore || 0)) || (!isHome && (f.awayScore || 0) > (f.homeScore || 0));
@@ -39,7 +45,7 @@ export default function MatchesPage() {
           <StaggerItem>
             <div className="section-header !mb-1">Fixtures & Results</div>
             <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">Matches</h1>
-            <p className="text-tertiary-c text-sm mt-1">{club!.name} · Season 2026</p>
+            <p className="text-tertiary-c text-sm mt-1">{club!.name} · Season 2026 · Week {currentWeek}</p>
           </StaggerItem>
           <StaggerItem className="grid grid-cols-3 gap-2">
             <RecordPill label="W" value={wins} tone="success" />

@@ -13,29 +13,34 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { RatingBadge } from '@/components/ui/Stat';
-import { OFFLINE_CLUBS, getOfflineSquad } from '@/lib/game-data';
+import { OFFLINE_CLUBS } from '@/lib/game-data';
+import type { Player } from '@/types/player';
 import { ArrowLeftRight, Search, X, Wallet, Star, ChevronRight, ShoppingCart, TrendingUp } from 'lucide-react';
 
 export default function TransfersPage() {
   const { club: myClub, hydrated } = useSelectedClub();
-  
+  const getSquad = useAppStore((s) => s.getSquad);
+  const clubBudgets = useAppStore((s) => s.clubBudgets);
+  const buyPlayer = useAppStore((s) => s.buyPlayer);
+
+  const transferBudget = myClub ? (clubBudgets[myClub.id] ?? myClub.transferBudget) : 0;
 
   const [search, setSearch] = useState('');
   const [posFilter, setPosFilter] = useState<string | null>(null);
   const [maxPrice, setMaxPrice] = useState(200_000_000);
-  const [selectedPlayer, setSelectedPlayer] = useState<any>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player & { clubName?: string; clubShort?: string; clubColor?: string } | null>(null);
 
   // Build transfer market from all clubs' squads (excluding my club)
   const marketPlayers = useMemo(() => {
-    const all: any[] = [];
+    const all: (Player & { clubName?: string; clubShort?: string; clubColor?: string })[] = [];
     OFFLINE_CLUBS.filter((c) => !myClub || c.id !== myClub.id).forEach((c) => {
-      const squad = getOfflineSquad(c.id);
+      const squad = getSquad(c.id);
       squad.forEach((p) => {
         all.push({ ...p, clubName: c.name, clubShort: c.shortName, clubColor: c.homeKitColor });
       });
     });
     return all.sort((a, b) => b.overallRating - a.overallRating);
-  }, [myClub]);
+  }, [myClub, getSquad]);
 
   const filtered = useMemo(() => {
     let result = marketPlayers;
@@ -72,11 +77,11 @@ export default function TransfersPage() {
             <div className="section-header !mb-1">Transfer Market</div>
             <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">Transfers</h1>
             <p className="text-tertiary-c text-sm mt-1">
-              Budget: <span className="text-success font-mono font-semibold">{formatCurrency(myClub!.transferBudget, 'EUR', true)}</span>
+              Budget: <span className="text-success font-mono font-semibold">{formatCurrency(transferBudget, 'EUR', true)}</span>
             </p>
           </StaggerItem>
           <StaggerItem className="flex gap-2">
-            <Badge variant="outline" size="md"><Wallet className="w-3 h-3" /> {formatCurrency(myClub!.transferBudget, 'EUR', true)}</Badge>
+            <Badge variant="outline" size="md"><Wallet className="w-3 h-3" /> {formatCurrency(transferBudget, 'EUR', true)}</Badge>
             <Badge variant="gold" size="md"><Star className="w-3 h-3" /> {filtered.length} players</Badge>
           </StaggerItem>
         </StaggerContainer>
@@ -155,7 +160,7 @@ export default function TransfersPage() {
                     <div className="text-[10px] text-tertiary-c font-mono">{p.position} · AGE {p.age} · {p.clubName}</div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="text-xs font-mono font-semibold text-success">{formatCurrency(p.marketValue, 'EUR', true)}</div>
+                    <div className="text-xs font-mono font-semibold text-success">{formatCurrency(p.marketValue ?? 0, 'EUR', true)}</div>
                     <div className="text-[9px] text-tertiary-c">market value</div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-tertiary-c shrink-0" />
@@ -199,7 +204,7 @@ export default function TransfersPage() {
               {/* Stats grid */}
               <div className="grid grid-cols-3 gap-2 mb-4">
                 <StatMini label="POT" value={selectedPlayer.potentialRating} />
-                <StatMini label="VALUE" value={formatCurrency(selectedPlayer.marketValue, 'EUR', true)} />
+                <StatMini label="VALUE" value={formatCurrency(selectedPlayer.marketValue ?? 0, 'EUR', true)} />
                 <StatMini label="WAGE" value={formatCurrency(selectedPlayer.wage, 'EUR', true) + '/y'} />
               </div>
 
@@ -217,11 +222,16 @@ export default function TransfersPage() {
               <div className="flex gap-2">
                 <Button
                   variant="gold" size="md" className="flex-1"
-                  onClick={() => { playRawClick(0.2); setSelectedPlayer(null); }}
-                  disabled={selectedPlayer.marketValue > myClub!.transferBudget}
+                  onClick={() => {
+                    const price = selectedPlayer.marketValue || 0;
+                    const success = buyPlayer(selectedPlayer.id, selectedPlayer.clubId, price);
+                    playRawClick(0.2);
+                    if (success) setSelectedPlayer(null);
+                  }}
+                  disabled={(selectedPlayer.marketValue || 0) > transferBudget}
                 >
                   <ShoppingCart className="w-4 h-4" />
-                  {selectedPlayer.marketValue > myClub!.transferBudget ? 'Insufficient Budget' : 'Make Offer'}
+                  {(selectedPlayer.marketValue || 0) > transferBudget ? 'Insufficient Budget' : 'Sign Player'}
                 </Button>
                 <Button variant="secondary" size="md" onClick={() => setSelectedPlayer(null)}>
                   Close

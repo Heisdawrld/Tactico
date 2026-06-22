@@ -13,14 +13,22 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { ProgressBar } from '@/components/ui/Stat';
-import { getOfflineClub, getOfflineLeagueTable, OFFLINE_CLUBS } from '@/lib/game-data';
+import { getOfflineClub, OFFLINE_CLUBS } from '@/lib/game-data';
+import { standingToTableRow } from '@/lib/career-engine';
 import { Trophy, TrendingUp, Target, ChevronRight, Award, Star } from 'lucide-react';
 
 export default function CareerPage() {
   const { club, hydrated } = useSelectedClub();
   const currentWeek = useAppStore((s) => s.currentWeek);
   const advanceWeek = useAppStore((s) => s.advanceWeek);
-  const leagueTable = useMemo(() => club ? getOfflineLeagueTable(club.leagueId || 1) : [], [club]);
+  const leagueStandings = useAppStore((s) => s.leagueStandings);
+  const boardConfidence = useAppStore((s) => s.boardConfidence);
+  const leagueTable = useMemo(() => {
+    if (!club) return [];
+    const leagueId = club.leagueId || 1;
+    const standings = leagueStandings[leagueId] ?? [];
+    return standings.map((s, i) => standingToTableRow(s, i + 1));
+  }, [club, leagueStandings]);
   const myRow = leagueTable.find((r) => club && r.clubId === club.id);
 
   const [objectives] = useState([
@@ -100,10 +108,12 @@ export default function CareerPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-headline font-bold text-gold-300 mb-2">
-                <AnimatedCounter value={78} />%
+                <AnimatedCounter value={boardConfidence} />%
               </div>
-              <ProgressBar value={78} tone="gold" />
-              <div className="text-[11px] text-tertiary-c mt-2">Job security: Secure</div>
+              <ProgressBar value={boardConfidence} tone="gold" />
+              <div className="text-[11px] text-tertiary-c mt-2">
+                Job security: {boardConfidence >= 70 ? 'Secure' : boardConfidence >= 50 ? 'Under review' : 'At risk'}
+              </div>
             </CardContent>
           </Card>
         </div>

@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
 import { useSelectedClub } from '@/lib/useSelectedClub';
@@ -12,42 +12,10 @@ import { StaggerContainer, StaggerItem } from '@/components/ui/motion';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { getOfflineClub, getOfflineSquad } from '@/lib/game-data';
-import { ArrowLeft, Target, Shield, Zap, Activity, ChevronRight, RotateCcw, Save } from 'lucide-react';
-
-const FORMATIONS: Record<string, { x: number; y: number; pos: string }[]> = {
-  '4-3-3': [
-    { x: 50, y: 92, pos: 'GK' },
-    { x: 15, y: 75, pos: 'LB' }, { x: 38, y: 78, pos: 'CB' }, { x: 62, y: 78, pos: 'CB' }, { x: 85, y: 75, pos: 'RB' },
-    { x: 25, y: 55, pos: 'CM' }, { x: 50, y: 50, pos: 'CDM' }, { x: 75, y: 55, pos: 'CM' },
-    { x: 20, y: 25, pos: 'LW' }, { x: 50, y: 18, pos: 'ST' }, { x: 80, y: 25, pos: 'RW' },
-  ],
-  '4-4-2': [
-    { x: 50, y: 92, pos: 'GK' },
-    { x: 15, y: 75, pos: 'LB' }, { x: 38, y: 78, pos: 'CB' }, { x: 62, y: 78, pos: 'CB' }, { x: 85, y: 75, pos: 'RB' },
-    { x: 15, y: 50, pos: 'LM' }, { x: 38, y: 52, pos: 'CM' }, { x: 62, y: 52, pos: 'CM' }, { x: 85, y: 50, pos: 'RM' },
-    { x: 35, y: 22, pos: 'ST' }, { x: 65, y: 22, pos: 'ST' },
-  ],
-  '4-2-3-1': [
-    { x: 50, y: 92, pos: 'GK' },
-    { x: 15, y: 75, pos: 'LB' }, { x: 38, y: 78, pos: 'CB' }, { x: 62, y: 78, pos: 'CB' }, { x: 85, y: 75, pos: 'RB' },
-    { x: 38, y: 60, pos: 'CDM' }, { x: 62, y: 60, pos: 'CDM' },
-    { x: 20, y: 35, pos: 'LM' }, { x: 50, y: 32, pos: 'CAM' }, { x: 80, y: 35, pos: 'RM' },
-    { x: 50, y: 15, pos: 'ST' },
-  ],
-  '3-5-2': [
-    { x: 50, y: 92, pos: 'GK' },
-    { x: 25, y: 78, pos: 'CB' }, { x: 50, y: 80, pos: 'CB' }, { x: 75, y: 78, pos: 'CB' },
-    { x: 10, y: 55, pos: 'LWB' }, { x: 35, y: 55, pos: 'CM' }, { x: 50, y: 50, pos: 'CDM' }, { x: 65, y: 55, pos: 'CM' }, { x: 90, y: 55, pos: 'RWB' },
-    { x: 35, y: 22, pos: 'ST' }, { x: 65, y: 22, pos: 'ST' },
-  ],
-  '5-3-2': [
-    { x: 50, y: 92, pos: 'GK' },
-    { x: 10, y: 72, pos: 'LWB' }, { x: 30, y: 78, pos: 'CB' }, { x: 50, y: 80, pos: 'CB' }, { x: 70, y: 78, pos: 'CB' }, { x: 90, y: 72, pos: 'RWB' },
-    { x: 30, y: 50, pos: 'CM' }, { x: 50, y: 48, pos: 'CDM' }, { x: 70, y: 50, pos: 'CM' },
-    { x: 35, y: 22, pos: 'ST' }, { x: 65, y: 22, pos: 'ST' },
-  ],
-};
+import { getOfflineClub } from '@/lib/game-data';
+import { FORMATIONS, FORMATION_IDS } from '@/lib/formations';
+import type { TacticalStyle } from '@/lib/career-engine';
+import { Target, Shield, Zap, Activity, RotateCcw, Save } from 'lucide-react';
 
 const TACTICAL_STYLES = [
   { id: 'possession', label: 'Possession', desc: 'Control the ball, control the game', icon: <Activity className="w-3.5 h-3.5" /> },
@@ -58,12 +26,16 @@ const TACTICAL_STYLES = [
 
 export default function TacticsPage() {
   const { club, hydrated } = useSelectedClub();
-  const squad = useMemo(() => (club ? getOfflineSquad(club.id) : []), [club]);
-  const [formation, setFormation] = useState('4-3-3');
-  const [style, setStyle] = useState('possession');
-  const [pressing, setPressing] = useState(60);
-  const [defensiveLine, setDefensiveLine] = useState(50);
-  const [tempo, setTempo] = useState(55);
+  const getSquad = useAppStore((s) => s.getSquad);
+  const tactics = useAppStore((s) => s.tactics);
+  const setTactics = useAppStore((s) => s.setTactics);
+
+  const squad = useMemo(() => (club ? getSquad(club.id) : []), [club, getSquad]);
+  const formation = tactics.formation;
+  const style = tactics.style;
+  const pressing = tactics.pressing;
+  const defensiveLine = tactics.defensiveLine;
+  const tempo = tactics.tempo;
 
   const startingXI = useMemo(() => {
     const sorted = [...squad].sort((a, b) => b.overallRating - a.overallRating);
@@ -82,11 +54,11 @@ export default function TacticsPage() {
             <p className="text-tertiary-c text-sm mt-1">{club!.name} · {formation}</p>
           </StaggerItem>
           <StaggerItem className="flex gap-2">
-            <Button variant="secondary" size="sm" onClick={() => { playRawClick(0.15); }}>
+            <Button variant="secondary" size="sm" onClick={() => { setTactics({ formation: '4-3-3', style: 'possession', pressing: 60, defensiveLine: 50, tempo: 55 }); playRawClick(0.15); }}>
               <RotateCcw className="w-3.5 h-3.5" /> Reset
             </Button>
             <Button variant="gold" size="sm" onClick={() => { playRawClick(0.2); }}>
-              <Save className="w-3.5 h-3.5" /> Save Tactics
+              <Save className="w-3.5 h-3.5" /> Saved
             </Button>
           </StaggerItem>
         </StaggerContainer>
@@ -101,10 +73,10 @@ export default function TacticsPage() {
             <CardContent>
               {/* Formation selector */}
               <div className="flex flex-wrap gap-1.5 mb-4">
-                {Object.keys(FORMATIONS).map((f) => (
+                {FORMATION_IDS.map((f) => (
                   <button
                     key={f}
-                    onClick={() => { setFormation(f); playRawClick(0.1); }}
+                    onClick={() => { setTactics({ formation: f }); playRawClick(0.1); }}
                     className={cn(
                       'px-3 py-1.5 rounded-md text-sm font-mono font-semibold transition-all border',
                       formation === f
@@ -140,7 +112,7 @@ export default function TacticsPage() {
                 </svg>
 
                 {/* Players */}
-                {FORMATIONS[formation].map((slot, idx) => {
+                {FORMATIONS[formation as keyof typeof FORMATIONS]?.map((slot, idx) => {
                   const player = startingXI[idx];
                   if (!player) return null;
                   const isGK = slot.pos === 'GK';
@@ -190,7 +162,7 @@ export default function TacticsPage() {
                 {TACTICAL_STYLES.map((s) => (
                   <button
                     key={s.id}
-                    onClick={() => { setStyle(s.id); playRawClick(0.1); }}
+                    onClick={() => { setTactics({ style: s.id as TacticalStyle }); playRawClick(0.1); }}
                     className={cn(
                       'w-full p-2.5 rounded-md border text-left transition-all flex items-start gap-2',
                       style === s.id
@@ -212,9 +184,9 @@ export default function TacticsPage() {
             <Card>
               <CardHeader><CardTitle>Team Instructions</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <Slider label="Pressing Intensity" value={pressing} onChange={setPressing} />
-                <Slider label="Defensive Line" value={defensiveLine} onChange={setDefensiveLine} />
-                <Slider label="Tempo" value={tempo} onChange={setTempo} />
+                <Slider label="Pressing Intensity" value={pressing} onChange={(v) => setTactics({ pressing: v })} />
+                <Slider label="Defensive Line" value={defensiveLine} onChange={(v) => setTactics({ defensiveLine: v })} />
+                <Slider label="Tempo" value={tempo} onChange={(v) => setTactics({ tempo: v })} />
               </CardContent>
             </Card>
           </div>
