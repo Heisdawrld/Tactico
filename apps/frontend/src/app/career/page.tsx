@@ -20,7 +20,7 @@ import { Trophy, TrendingUp, Target, ChevronRight, Award, Star } from 'lucide-re
 export default function CareerPage() {
   const { club, hydrated } = useSelectedClub();
   const currentWeek = useAppStore((s) => s.currentWeek);
-  const advanceWeek = useAppStore((s) => s.advanceWeek);
+  const continueGame = useAppStore((s) => s.continueGame);
   const leagueStandings = useAppStore((s) => s.leagueStandings);
   const boardConfidence = useAppStore((s) => s.boardConfidence);
   const leagueTable = useMemo(() => {
@@ -51,8 +51,8 @@ export default function CareerPage() {
             <p className="text-tertiary-c text-sm mt-1">{club!.name} · Week {currentWeek}</p>
           </StaggerItem>
           <StaggerItem>
-            <Button variant="gold" size="md" onClick={() => { advanceWeek(); playRawClick(0.2); }}>
-              <ChevronRight className="w-4 h-4" /> Advance Week
+            <Button variant="gold" size="md" onClick={() => { continueGame(); playRawClick(0.2); }}>
+              <ChevronRight className="w-4 h-4" /> Continue
             </Button>
           </StaggerItem>
         </StaggerContainer>

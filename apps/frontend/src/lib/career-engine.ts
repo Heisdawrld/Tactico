@@ -62,7 +62,7 @@ export interface PressEvent {
   id: number;
   headline: string;
   time: string;
-  category: 'transfer' | 'result' | 'injury' | 'news' | 'rumor';
+  category: 'transfer' | 'result' | 'injury' | 'news' | 'rumor' | 'preview';
 }
 
 export type TacticalStyle = 'possession' | 'gegenpress' | 'counter' | 'defensive';

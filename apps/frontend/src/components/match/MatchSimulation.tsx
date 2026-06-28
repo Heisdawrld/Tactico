@@ -16,7 +16,7 @@ import {
 import { playRawClick } from '@/lib/audio';
 import { getCrowdAudio } from '@/lib/crowd-audio';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, RotateCcw, ChevronRight } from 'lucide-react';
+import { Play, Pause, RotateCcw, ChevronRight, Mic, MapPin, CalendarDays } from 'lucide-react';
 
 /**
  * MatchSimulation — the physics-based match engine.
@@ -117,6 +117,18 @@ export default function MatchSimulation() {
 
   const homePlayers = useMemo(() => [...homeSquad].sort((a, b) => b.overallRating - a.overallRating).slice(0, 11), [homeSquad]);
   const awayPlayers = useMemo(() => [...awaySquad].sort((a, b) => b.overallRating - a.overallRating).slice(0, 11), [awaySquad]);
+  const starHome = homePlayers[0];
+  const starAway = awayPlayers[0];
+  const matchHeadline = useMemo(() => {
+    if (!activeFixture) return 'The floodlights are live and the crowd is ready.';
+    if (homeClub.reputation > awayClub.reputation + 3) {
+      return `${homeClub.name} come in as favourites, but the pressure is all on the home dugout.`;
+    }
+    if (awayClub.reputation > homeClub.reputation + 3) {
+      return `${awayClub.name} arrive with pedigree, and the home side have been told to rise to the moment.`;
+    }
+    return `Pundits are calling this a tactical duel that could be decided by one big moment.`;
+  }, [activeFixture, homeClub, awayClub]);
 
   const [matchState, setMatchState] = useState<MatchState>({
     score: { home: 0, away: 0 },
@@ -611,11 +623,55 @@ export default function MatchSimulation() {
         <div ref={containerRef} className="w-full" style={{ aspectRatio: `${PITCH_W} / ${PITCH_H}` }} />
         {matchState.matchStatus === 'waiting' && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <button onClick={handleStart}
-              className="flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-md font-display font-bold text-base sm:text-lg text-black transition-transform hover:scale-105 active:scale-100"
-              style={{ background: 'linear-gradient(135deg, #FFD700 0%, #B0830C 100%)', boxShadow: '0 4px 20px rgba(255, 215, 0, 0.4)' }}>
-              <Play className="w-5 h-5" /> Kick Off
-            </button>
+            <div className="mx-4 w-full max-w-2xl rounded-2xl border border-gold-300/20 bg-black/70 p-6 text-center shadow-2xl">
+              <div className="mb-3 text-[10px] font-mono uppercase tracking-[0.35em] text-gold-300">Match Intro</div>
+              <h2 className="font-headline text-3xl font-bold text-primary-c sm:text-4xl">
+                {homeClub.name} vs {awayClub.name}
+              </h2>
+              <p className="mx-auto mt-3 max-w-xl text-sm text-secondary-c sm:text-base">
+                {matchHeadline}
+              </p>
+
+              <div className="mt-5 grid gap-3 text-left sm:grid-cols-3">
+                <div className="rounded-xl border border-white/8 bg-surface-2/50 p-3">
+                  <div className="mb-1 flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-tertiary-c">
+                    <MapPin className="h-3.5 w-3.5 text-gold-300" />
+                    Venue
+                  </div>
+                  <div className="text-sm font-semibold text-primary-c">{homeClub.stadium ?? 'Home Ground'}</div>
+                  <div className="mt-1 text-xs text-tertiary-c">Crowd expected to carry the first wave.</div>
+                </div>
+                <div className="rounded-xl border border-white/8 bg-surface-2/50 p-3">
+                  <div className="mb-1 flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-tertiary-c">
+                    <Mic className="h-3.5 w-3.5 text-gold-300" />
+                    Pundit Note
+                  </div>
+                  <div className="text-sm font-semibold text-primary-c">
+                    {starHome?.lastName ?? homeClub.shortName} vs {starAway?.lastName ?? awayClub.shortName}
+                  </div>
+                  <div className="mt-1 text-xs text-tertiary-c">The biggest duel on the night may decide the tone.</div>
+                </div>
+                <div className="rounded-xl border border-white/8 bg-surface-2/50 p-3">
+                  <div className="mb-1 flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-tertiary-c">
+                    <CalendarDays className="h-3.5 w-3.5 text-gold-300" />
+                    Matchday
+                  </div>
+                  <div className="text-sm font-semibold text-primary-c">{activeFixture?.matchDate ?? 'Tonight'}</div>
+                  <div className="mt-1 text-xs text-tertiary-c">{activeFixture?.competition ?? homeClub.league}</div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <button
+                  onClick={handleStart}
+                  className="flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-md font-display font-bold text-base sm:text-lg text-black transition-transform hover:scale-105 active:scale-100"
+                  style={{ background: 'linear-gradient(135deg, #FFD700 0%, #B0830C 100%)', boxShadow: '0 4px 20px rgba(255, 215, 0, 0.4)' }}
+                >
+                  <Play className="w-5 h-5" /> Walk Out And Kick Off
+                </button>
+                <LinkButton href="/tactics" label="Last Minute Tactics" />
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -691,7 +747,7 @@ export default function MatchSimulation() {
                   <div className="text-primary-c">{homePossPct}% - {100 - homePossPct}%</div>
                 </div>
               </div>
-              <button onClick={() => { playRawClick(0.15); router.push('/matches'); }}
+              <button onClick={() => { playRawClick(0.15); router.push('/dashboard'); }}
                 className="flex items-center gap-2 px-6 py-3 rounded-md font-display font-bold text-black mx-auto mb-2"
                 style={{ background: 'linear-gradient(135deg, #FFD700 0%, #B0830C 100%)' }}>
                 <ChevronRight className="w-4 h-4" /> Continue
@@ -705,5 +761,16 @@ export default function MatchSimulation() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function LinkButton({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      href={href}
+      className="rounded-md border border-white/12 bg-surface-3 px-4 py-3 text-sm font-medium text-primary-c transition-colors hover:bg-surface-4"
+    >
+      {label}
+    </a>
   );
 }
