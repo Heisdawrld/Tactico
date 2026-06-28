@@ -91,7 +91,7 @@ export default function TacticsPage() {
 
               {/* Pitch */}
               <div
-                className="relative w-full max-w-full rounded-lg overflow-hidden border border-white/8 mx-auto"
+                className="relative w-full max-w-full rounded-lg overflow-visible sm:overflow-hidden border border-white/8 mx-auto"
                 style={{
                   aspectRatio: '3 / 4',
                   maxWidth: '500px',

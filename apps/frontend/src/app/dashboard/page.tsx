@@ -133,7 +133,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="relative z-10 px-4 py-6 pb-12 sm:px-6 lg:px-8">
+    <div className="page-mobile relative z-10 px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-2xl border border-white/8 bg-surface-1/70 p-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">

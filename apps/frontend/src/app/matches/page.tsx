@@ -40,7 +40,7 @@ export default function MatchesPage() {
 
   return (
     <div className="relative z-10">
-      <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12 max-w-5xl mx-auto">
+      <div className="page-mobile px-4 sm:px-6 lg:px-8 py-6 max-w-5xl mx-auto">
         <StaggerContainer className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6" stagger={0.05}>
           <StaggerItem>
             <div className="section-header !mb-1">Fixtures & Results</div>
@@ -71,7 +71,7 @@ export default function MatchesPage() {
                 >
                   <Card hover>
                     <CardContent className="!p-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                         {/* Competition badge */}
                         <div className="shrink-0 w-12 text-center">
                           <Badge variant={m.status === 'live' ? 'danger' : 'outline'} size="sm">
@@ -81,7 +81,7 @@ export default function MatchesPage() {
 
                         {/* Match info */}
                         <div className="flex-1 min-w-0 flex items-center gap-3">
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div className="flex min-w-0 flex-1 items-start gap-2 sm:items-center">
                             <span className={cn('text-[10px] font-mono font-bold uppercase tracking-wider', isHome ? 'text-success' : 'text-warning')}>
                               {isHome ? 'HOME' : 'AWAY'}
                             </span>
@@ -93,9 +93,13 @@ export default function MatchesPage() {
                             </div>
                             <div className="min-w-0">
                               <div className="font-display font-semibold text-sm text-primary-c truncate">{opp.name}</div>
-                              <div className="text-[10px] text-tertiary-c font-mono flex items-center gap-1.5">
-                                <Calendar className="w-2.5 h-2.5" /> {m.matchDate}
-                                <MapPin className="w-2.5 h-2.5 ml-1" /> {isHome ? club!.stadium : opp.stadium}
+                              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-tertiary-c font-mono">
+                                <span className="inline-flex items-center gap-1">
+                                  <Calendar className="w-2.5 h-2.5" /> {m.matchDate}
+                                </span>
+                                <span className="inline-flex items-center gap-1">
+                                  <MapPin className="w-2.5 h-2.5" /> {isHome ? club!.stadium : opp.stadium}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -103,7 +107,7 @@ export default function MatchesPage() {
 
                         {/* Play button */}
                         {m.status === 'live' || m.status === 'scheduled' ? (
-                          <Link href="/match-simulation" onClick={() => playRawClick(0.15)}>
+                          <Link href="/match-simulation" onClick={() => playRawClick(0.15)} className="sm:ml-auto">
                             <Button variant={m.status === 'live' ? 'gold' : 'secondary'} size="sm" className="shrink-0">
                               <PlayCircle className="w-3.5 h-3.5" />
                               {m.status === 'live' ? 'Resume' : 'Play'}

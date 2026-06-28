@@ -132,7 +132,7 @@ export default function SquadPage() {
   // ---------- MAIN RENDER ----------
   return (
     <div className="relative z-10">
-      <div className="px-6 lg:px-8 py-6 pb-12">
+      <div className="page-mobile px-4 py-6 sm:px-6 lg:px-8">
         {/* ---------- HEADER ---------- */}
         <StaggerContainer className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6" stagger={0.05}>
           <StaggerItem>
@@ -258,40 +258,68 @@ export default function SquadPage() {
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.2, delay: Math.min(idx * 0.01, 0.4) }}
                       onClick={() => { setSelectedPlayer(player); playSfx('click'); }}
-                      className="w-full text-left grid grid-cols-[40px_1fr_60px_60px_50px_50px_50px_50px_50px_50px_70px] gap-2 px-4 py-2.5 items-center hover:bg-gold-soft/30 transition-colors group"
+                      className="group w-full px-4 py-3 text-left transition-colors hover:bg-gold-soft/30"
                     >
-                      <div className="text-[10px] font-mono text-tertiary-c text-center">
-                        {player.shirtNumber || idx + 1}
-                      </div>
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-surface-3 to-surface-4 flex items-center justify-center text-[10px] font-bold text-secondary-c shrink-0">
-                          {player.firstName?.[0]}{player.lastName?.[0]}
+                      <div className="flex items-start justify-between gap-3 md:grid md:grid-cols-[40px_1fr_60px_60px_50px_50px_50px_50px_50px_50px_70px] md:gap-2 md:items-center">
+                        <div className="hidden text-[10px] font-mono text-tertiary-c text-center md:block">
+                          {player.shirtNumber || idx + 1}
                         </div>
-                        <div className="min-w-0">
-                          <div className="font-medium text-sm text-primary-c text-truncate-1 group-hover:text-gold-200 transition-colors">
-                            {player.firstName} {player.lastName}
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-surface-3 to-surface-4 flex items-center justify-center text-[10px] font-bold text-secondary-c shrink-0">
+                            {player.firstName?.[0]}{player.lastName?.[0]}
                           </div>
-                          <div className="text-[10px] text-tertiary-c font-mono tracking-wide flex items-center gap-1.5">
-                            <span>{player.nationality || '—'}</span>
-                            {player.foot && <><span className="text-quaternary-c">·</span><span>{player.foot === 'L' ? 'Left' : player.foot === 'R' ? 'Right' : 'Both'}</span></>}
+                          <div className="min-w-0">
+                            <div className="font-medium text-sm text-primary-c text-truncate-1 group-hover:text-gold-200 transition-colors">
+                              {player.firstName} {player.lastName}
+                            </div>
+                            <div className="text-[10px] text-tertiary-c font-mono tracking-wide flex flex-wrap items-center gap-1.5">
+                              <span className="md:hidden">#{player.shirtNumber || idx + 1}</span>
+                              <span>{player.nationality || '—'}</span>
+                              {player.foot && <><span className="text-quaternary-c">·</span><span>{player.foot === 'L' ? 'Left' : player.foot === 'R' ? 'Right' : 'Both'}</span></>}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="hidden md:block">
+                          <span className={cn('inline-block px-1.5 py-0.5 rounded text-[9px] font-mono font-bold tracking-wider', colors.bg, colors.text)}>
+                            {player.position || '—'}
+                          </span>
+                        </div>
+                        <div className="hidden text-sm text-secondary-c font-mono tabular-nums md:block">{player.age}</div>
+                        <div className="hidden md:block"><Stat6 value={player.pace} /></div>
+                        <div className="hidden md:block"><Stat6 value={player.shooting} /></div>
+                        <div className="hidden md:block"><Stat6 value={player.passing} /></div>
+                        <div className="hidden md:block"><Stat6 value={player.dribbling} /></div>
+                        <div className="hidden md:block"><Stat6 value={player.defending} /></div>
+                        <div className="hidden md:block"><Stat6 value={player.physicality} /></div>
+                        <div className="hidden text-right md:block">
+                          <div className="text-[10px] font-mono text-success tabular-nums">
+                            {player.marketValue ? formatCurrency(player.marketValue, 'EUR', true) : '—'}
                           </div>
                         </div>
                       </div>
-                      <div>
-                        <span className={cn('inline-block px-1.5 py-0.5 rounded text-[9px] font-mono font-bold tracking-wider', colors.bg, colors.text)}>
-                          {player.position || '—'}
-                        </span>
-                      </div>
-                      <div className="text-sm text-secondary-c font-mono tabular-nums">{player.age}</div>
-                      <Stat6 value={player.pace} />
-                      <Stat6 value={player.shooting} />
-                      <Stat6 value={player.passing} />
-                      <Stat6 value={player.dribbling} />
-                      <Stat6 value={player.defending} />
-                      <Stat6 value={player.physicality} />
-                      <div className="text-right">
-                        <div className="text-[10px] font-mono text-success tabular-nums">
-                          {player.marketValue ? formatCurrency(player.marketValue, 'EUR', true) : '—'}
+                      <div className="mt-3 grid grid-cols-2 gap-2 md:hidden">
+                        <div className="rounded-md bg-surface-2/60 px-2 py-1.5">
+                          <div className="text-[9px] font-mono uppercase tracking-widest text-tertiary-c">Profile</div>
+                          <div className="mt-1 flex items-center gap-2 text-xs text-primary-c">
+                            <span className={cn('inline-block px-1.5 py-0.5 rounded text-[9px] font-mono font-bold tracking-wider', colors.bg, colors.text)}>
+                              {player.position || '—'}
+                            </span>
+                            <span className="font-mono">AGE {player.age}</span>
+                          </div>
+                        </div>
+                        <div className="rounded-md bg-surface-2/60 px-2 py-1.5">
+                          <div className="text-[9px] font-mono uppercase tracking-widest text-tertiary-c">Value</div>
+                          <div className="mt-1 text-xs font-mono text-success">
+                            {player.marketValue ? formatCurrency(player.marketValue, 'EUR', true) : '—'}
+                          </div>
+                        </div>
+                        <div className="col-span-2 grid grid-cols-3 gap-2 rounded-md bg-surface-2/60 px-2 py-2">
+                          <MobileStat6 label="PAC" value={player.pace} />
+                          <MobileStat6 label="SHO" value={player.shooting} />
+                          <MobileStat6 label="PAS" value={player.passing} />
+                          <MobileStat6 label="DRI" value={player.dribbling} />
+                          <MobileStat6 label="DEF" value={player.defending} />
+                          <MobileStat6 label="PHY" value={player.physicality} />
                         </div>
                       </div>
                     </motion.button>
@@ -341,7 +369,7 @@ function PlayerDetailDrawer({ player, onClose }: { player: Player; onClose: () =
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="relative w-full max-w-md h-full glass-heavy border-l border-white/8 overflow-y-auto scroll-region"
+        className="relative w-full max-w-md h-full glass-heavy border-l border-white/8 overflow-y-auto scroll-region safe-area-top safe-area-bottom"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -427,6 +455,18 @@ function PlayerDetailDrawer({ player, onClose }: { player: Player; onClose: () =
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+function MobileStat6({ label, value }: { label: string; value: number | undefined }) {
+  const color = value && value >= 85 ? 'text-success' : value && value >= 75 ? 'text-primary-c' : value && value >= 65 ? 'text-warning' : 'text-danger';
+  return (
+    <div className="rounded-md bg-surface-3/60 px-2 py-1 text-center">
+      <div className="text-[9px] font-mono uppercase tracking-widest text-tertiary-c">{label}</div>
+      <div className={cn('mt-1 text-xs font-mono font-semibold', !value && 'text-quaternary-c', value && color)}>
+        {value ?? '—'}
+      </div>
+    </div>
   );
 }
 

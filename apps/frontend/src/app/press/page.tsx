@@ -89,7 +89,7 @@ export default function PressPage() {
 
   return (
     <div className="relative z-10">
-      <div className="px-4 sm:px-6 lg:px-8 py-6 pb-12 max-w-4xl mx-auto">
+      <div className="page-mobile px-4 sm:px-6 lg:px-8 py-6 max-w-4xl mx-auto">
         <StaggerContainer className="mb-6" stagger={0.05}>
           <StaggerItem>
             <div className="section-header !mb-1">Media Center</div>

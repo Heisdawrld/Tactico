@@ -563,7 +563,7 @@ export default function MatchSimulation() {
   const homePossPct = totalPossession > 0 ? Math.round((matchState.stats.homePossession / totalPossession) * 100) : 50;
 
   return (
-    <div className="flex flex-col items-center min-h-screen p-3 sm:p-4 safe-area-top safe-area-bottom relative z-10">
+    <div className="flex flex-col items-center min-h-full p-3 sm:p-4 safe-area-top relative z-10">
       {/* Scoreboard */}
       <div className="w-full max-w-5xl mb-3 glass-heavy rounded-xl p-3 sm:p-4 border border-white/8 relative z-10">
         <div className="flex items-center justify-between gap-2">

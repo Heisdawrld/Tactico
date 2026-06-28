@@ -141,7 +141,7 @@ export function MobileTabBar() {
               </div>
 
               {/* Grid of all tabs */}
-              <div className="grid grid-cols-4 gap-2 px-4 pb-4">
+              <div className="grid grid-cols-3 gap-2 px-4 pb-4 sm:grid-cols-4">
                 {NAV_ITEMS.map((item) => {
                   const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
                   const Icon = item.icon;

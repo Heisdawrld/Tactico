@@ -63,7 +63,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-base safe-area-all relative">
+    <div
+      className="flex overflow-hidden bg-surface-base safe-area-top safe-area-left safe-area-right relative"
+      style={{ height: '100dvh', minHeight: '100dvh' }}
+    >
       <AnimatedBackground variant={pathname.includes('match-simulation') ? 'matchday' : 'default'} />
 
       <LeftRail />
@@ -75,7 +78,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <TopBar />
 
         <div className="flex flex-1 min-h-0 relative z-10">
-          <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden relative z-10">
+          <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden relative z-10 pb-[calc(var(--mobile-tabbar-height)+env(safe-area-inset-bottom,0px)+8px)] md:pb-0">
             {children}
           </main>
 
@@ -88,8 +91,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <MobileTabBar />
-
-      <div className="md:hidden h-[var(--mobile-tabbar-height)] shrink-0 safe-area-bottom" />
     </div>
   );
 }
