@@ -19,6 +19,7 @@ import {
   markFixturePlayed,
   simulateBackgroundMatches,
   generatePressHeadline,
+  getNextUserFixture,
 } from '@/lib/career-engine';
 
 /**
@@ -44,6 +45,126 @@ export type NavSection =
   | 'press'
   | 'transfers'
   | 'settings';
+
+export type CareerPhase =
+  | 'normal_day'
+  | 'match_eve'
+  | 'matchday'
+  | 'post_match'
+  | 'recovery_day';
+
+export type InboxCategory = 'match' | 'media' | 'club' | 'board' | 'world';
+export type InboxPriority = 'low' | 'medium' | 'high';
+
+export interface InboxItem {
+  id: number;
+  title: string;
+  body: string;
+  category: InboxCategory;
+  priority: InboxPriority;
+  createdAt: string;
+  actionLabel?: string;
+  actionPath?: string;
+  fixtureId?: number;
+}
+
+const MAX_INBOX_ITEMS = 16;
+const MAX_PRESS_ITEMS = 20;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function addDays(dateString: string, days: number): string {
+  const date = new Date(`${dateString}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function diffDays(currentDate: string, targetDate: string): number {
+  const current = new Date(`${currentDate}T12:00:00Z`);
+  const target = new Date(`${targetDate}T12:00:00Z`);
+  return Math.round((target.getTime() - current.getTime()) / 86_400_000);
+}
+
+function getCareerStartDate(fixtures: CareerFixture[]): string {
+  const firstFixture = fixtures[0];
+  return firstFixture ? addDays(firstFixture.matchDate, -3) : '2026-08-13';
+}
+
+function pushInbox(existing: InboxItem[], item: InboxItem): InboxItem[] {
+  return [item, ...existing].slice(0, MAX_INBOX_ITEMS);
+}
+
+function createInboxItem(
+  id: number,
+  title: string,
+  body: string,
+  category: InboxCategory,
+  priority: InboxPriority,
+  createdAt: string,
+  options: Partial<Pick<InboxItem, 'actionLabel' | 'actionPath' | 'fixtureId'>> = {},
+): InboxItem {
+  return {
+    id,
+    title,
+    body,
+    category,
+    priority,
+    createdAt,
+    ...options,
+  };
+}
+
+function promoteFixturesForDate(
+  fixtures: CareerFixture[],
+  currentDate: string,
+  clubId: number,
+): CareerFixture[] {
+  return fixtures.map((fixture) => {
+    const isUserFixture = fixture.homeClubId === clubId || fixture.awayClubId === clubId;
+    if (!isUserFixture || fixture.status === 'finished') return fixture;
+    if (fixture.matchDate <= currentDate) {
+      return { ...fixture, status: 'live' };
+    }
+    return { ...fixture, status: 'scheduled' };
+  });
+}
+
+function createWorldRoundup(
+  clubId: number,
+  currentWeek: number,
+  currentDate: string,
+  nextInboxId: number,
+): InboxItem {
+  const rivals = OFFLINE_CLUBS.filter((club) => club.id !== clubId).slice(0, 6);
+  const rival = rivals[currentWeek % rivals.length];
+  return createInboxItem(
+    nextInboxId,
+    'World Update',
+    `${rival.shortName} are building momentum in the wider title picture while pundits keep one eye on your next move.`,
+    'world',
+    'low',
+    currentDate,
+  );
+}
+
+function createTrainingReport(
+  clubId: number,
+  currentDate: string,
+  nextInboxId: number,
+): InboxItem {
+  const club = getOfflineClub(clubId);
+  return createInboxItem(
+    nextInboxId,
+    'Training Report',
+    `${club?.coach ?? 'Your staff'} report a sharp session. Shape looks good and the dressing room feel is positive ahead of the next fixture.`,
+    'club',
+    'medium',
+    currentDate,
+    { actionLabel: 'Review Tactics', actionPath: '/tactics' },
+  );
+}
 
 interface AppState {
   // ---------- HYDRATION ----------
@@ -88,6 +209,8 @@ interface AppState {
   // ---------- CAREER / WORLD ----------
   currentSeason: number;
   currentWeek: number;
+  currentDate: string;
+  currentPhase: CareerPhase;
   careerInitialized: boolean;
   leagueStandings: Record<number, LeagueStanding[]>;
   fixtures: CareerFixture[];
@@ -96,9 +219,13 @@ interface AppState {
   clubBudgets: Record<number, number>;
   tactics: TacticsState;
   boardConfidence: number;
+  squadMorale: number;
+  fanSentiment: number;
+  inbox: InboxItem[];
   pressEvents: PressEvent[];
   nextHistoryId: number;
   nextPressId: number;
+  nextInboxId: number;
 
   initializeCareer: (clubId: number) => void;
   getSquad: (clubId: number) => Player[];
@@ -106,6 +233,7 @@ interface AppState {
   recordMatchResult: (fixtureId: number, homeScore: number, awayScore: number) => void;
   buyPlayer: (playerId: number, fromClubId: number, price: number) => boolean;
   sellPlayer: (playerId: number, price: number) => boolean;
+  continueGame: () => void;
   advanceWeek: () => void;
   setCurrentSeason: (s: number) => void;
   setCurrentWeek: (w: number) => void;
@@ -116,6 +244,8 @@ interface AppState {
 }
 
 const CAREER_DEFAULTS = {
+  currentDate: '',
+  currentPhase: 'normal_day' as CareerPhase,
   careerInitialized: false,
   leagueStandings: {} as Record<number, LeagueStanding[]>,
   fixtures: [] as CareerFixture[],
@@ -124,9 +254,13 @@ const CAREER_DEFAULTS = {
   clubBudgets: {} as Record<number, number>,
   tactics: DEFAULT_TACTICS,
   boardConfidence: 75,
+  squadMorale: 72,
+  fanSentiment: 68,
+  inbox: [] as InboxItem[],
   pressEvents: [] as PressEvent[],
   nextHistoryId: 1,
   nextPressId: 1,
+  nextInboxId: 1,
 };
 
 export const useAppStore = create<AppState>()(
@@ -180,20 +314,60 @@ export const useAppStore = create<AppState>()(
         const club = getOfflineClub(clubId);
         if (!club) return;
         const leagueId = club.leagueId || 1;
+        const fixtures = createUserFixtures(clubId);
+        const currentDate = getCareerStartDate(fixtures);
+        const openingFixture = getNextUserFixture(fixtures, clubId);
+        const inbox: InboxItem[] = [
+          createInboxItem(
+            1,
+            'Welcome To The Dugout',
+            `You are now in charge of ${club.name}. The board wants fast momentum and the supporters want to feel belief from day one.`,
+            'board',
+            'high',
+            currentDate,
+          ),
+          createTrainingReport(clubId, currentDate, 2),
+        ];
+
+        if (openingFixture) {
+          const opponentId =
+            openingFixture.homeClubId === clubId ? openingFixture.awayClubId : openingFixture.homeClubId;
+          const opponent = getOfflineClub(opponentId);
+          if (opponent) {
+            inbox.unshift(
+              createInboxItem(
+                3,
+                'Opening Match Preview',
+                `${opponent.name} are up next on ${openingFixture.matchDate}. The media are already framing it as an early tone-setter for your season.`,
+                'match',
+                'high',
+                currentDate,
+                { actionLabel: 'Open Matches', actionPath: '/matches', fixtureId: openingFixture.id },
+              ),
+            );
+          }
+        }
+
         set({
           careerInitialized: true,
           leagueStandings: { [leagueId]: createFreshStandings(leagueId) },
-          fixtures: createUserFixtures(clubId),
+          fixtures,
           matchHistory: [],
           squads: initializeAllSquads(),
           clubBudgets: initializeClubBudgets(),
           tactics: { ...DEFAULT_TACTICS, formation: get().managerFormation || '4-3-3' },
           boardConfidence: 75,
+          squadMorale: 72,
+          fanSentiment: 68,
+          inbox,
           pressEvents: [],
           nextHistoryId: 1,
           nextPressId: 1,
+          nextInboxId: 4,
           currentSeason: 1,
           currentWeek: 1,
+          currentDate,
+          currentPhase: 'normal_day',
         });
       },
 
@@ -219,8 +393,19 @@ export const useAppStore = create<AppState>()(
         if (!fixture || fixture.status === 'finished') return;
 
         const leagueId = club.leagueId || 1;
-        const standings = state.leagueStandings[leagueId] ?? createFreshStandings(leagueId);
-        const updatedStandings = applyResultToStandings(
+        let standings = state.leagueStandings[leagueId] ?? createFreshStandings(leagueId);
+        const backgroundMatches = simulateBackgroundMatches(leagueId, fixture.week, clubId, state.fixtures);
+        for (const match of backgroundMatches) {
+          standings = applyResultToStandings(
+            standings,
+            match.homeClubId,
+            match.awayClubId,
+            match.homeScore,
+            match.awayScore,
+          );
+        }
+
+        standings = applyResultToStandings(
           standings,
           fixture.homeClubId,
           fixture.awayClubId,
@@ -236,6 +421,8 @@ export const useAppStore = create<AppState>()(
         const awayClub = getOfflineClub(fixture.awayClubId);
 
         let boardConfidence = state.boardConfidence;
+        let squadMorale = state.squadMorale;
+        let fanSentiment = state.fanSentiment;
         if (userParticipated && homeClub && awayClub) {
           const userWon =
             (homeScore > awayScore && fixture.homeClubId === clubId) ||
@@ -243,9 +430,18 @@ export const useAppStore = create<AppState>()(
           const userLost =
             (homeScore > awayScore && fixture.awayClubId === clubId) ||
             (awayScore > homeScore && fixture.homeClubId === clubId);
-          if (userWon) boardConfidence = Math.min(100, boardConfidence + 3);
-          else if (userLost) boardConfidence = Math.max(20, boardConfidence - 4);
-          else boardConfidence = Math.min(100, boardConfidence + 1);
+          if (userWon) {
+            boardConfidence = Math.min(100, boardConfidence + 3);
+            squadMorale = Math.min(100, squadMorale + 4);
+            fanSentiment = Math.min(100, fanSentiment + 5);
+          } else if (userLost) {
+            boardConfidence = Math.max(20, boardConfidence - 4);
+            squadMorale = Math.max(35, squadMorale - 4);
+            fanSentiment = Math.max(25, fanSentiment - 5);
+          } else {
+            boardConfidence = Math.min(100, boardConfidence + 1);
+            squadMorale = clamp(squadMorale + 1, 0, 100);
+          }
         }
 
         const historyEntry: MatchHistoryEntry = {
@@ -262,9 +458,23 @@ export const useAppStore = create<AppState>()(
         };
 
         const pressEvents = [...state.pressEvents];
+        let nextPressId = state.nextPressId;
+        if (backgroundMatches.length > 0) {
+          const sample = backgroundMatches[0];
+          const bgHome = getOfflineClub(sample.homeClubId);
+          const bgAway = getOfflineClub(sample.awayClubId);
+          if (bgHome && bgAway) {
+            pressEvents.unshift({
+              id: nextPressId++,
+              headline: `${bgHome.shortName} ${sample.homeScore}-${sample.awayScore} ${bgAway.shortName} keeps the ${club.league} conversation moving.`,
+              time: 'Just now',
+              category: 'result',
+            });
+          }
+        }
         if (userParticipated && homeClub && awayClub) {
           pressEvents.unshift({
-            id: state.nextPressId,
+            id: nextPressId++,
             headline: generatePressHeadline(homeClub, awayClub, homeScore, awayScore, clubId),
             time: 'Just now',
             category: 'result',
@@ -273,16 +483,85 @@ export const useAppStore = create<AppState>()(
 
         const playedWeek = fixture.week;
         const shouldAdvanceWeek = userParticipated && playedWeek === state.currentWeek;
+        const nextDate = addDays(fixture.matchDate || state.currentDate, 1);
+        const promotedFixtures = promoteFixturesForDate(updatedFixtures, nextDate, clubId);
+        const nextFixture = getNextUserFixture(promotedFixtures, clubId);
+        const myRow = standings.find((row) => row.clubId === clubId);
+        const myPosition = myRow ? standings.indexOf(myRow) + 1 : null;
+        let nextInboxId = state.nextInboxId;
+        let inbox = state.inbox.slice();
+
+        const resultSummary =
+          homeScore === awayScore
+            ? `A draw keeps things moving, but the conversation around ${club.name} will be about whether more control was possible.`
+            : ((fixture.homeClubId === clubId && homeScore > awayScore) ||
+                (fixture.awayClubId === clubId && awayScore > homeScore))
+              ? `${club.name} take the points and the media narrative swings in your favour immediately.`
+              : `${club.name} come away bruised and the spotlight will only grow stronger over the next few days.`;
+
+        inbox = pushInbox(
+          inbox,
+          createInboxItem(
+            nextInboxId++,
+            'Post-Match Report',
+            resultSummary,
+            'match',
+            'high',
+            nextDate,
+            { actionLabel: 'Review Match', actionPath: '/matches', fixtureId },
+          ),
+        );
+
+        if (myPosition != null) {
+          inbox = pushInbox(
+            inbox,
+            createInboxItem(
+              nextInboxId++,
+              'Table Impact',
+              `${club.name} now sit ${myPosition}${myPosition === 1 ? 'st' : myPosition === 2 ? 'nd' : myPosition === 3 ? 'rd' : 'th'} in ${club.league}. The board confidence meter reacts to every result now.`,
+              'board',
+              'medium',
+              nextDate,
+              { actionLabel: 'View Standings', actionPath: '/career' },
+            ),
+          );
+        }
+
+        if (nextFixture) {
+          const nextOpponentId =
+            nextFixture.homeClubId === clubId ? nextFixture.awayClubId : nextFixture.homeClubId;
+          const nextOpponent = getOfflineClub(nextOpponentId);
+          if (nextOpponent) {
+            inbox = pushInbox(
+              inbox,
+              createInboxItem(
+                nextInboxId++,
+                'Next Fixture Set',
+                `${nextOpponent.name} are next on ${nextFixture.matchDate}. Recovery starts now and the media will quickly shift focus.`,
+                'match',
+                'medium',
+                nextDate,
+                { actionLabel: 'Open Dashboard', actionPath: '/dashboard', fixtureId: nextFixture.id },
+              ),
+            );
+          }
+        }
 
         set({
-          leagueStandings: { ...state.leagueStandings, [leagueId]: updatedStandings },
-          fixtures: updatedFixtures,
+          leagueStandings: { ...state.leagueStandings, [leagueId]: standings },
+          fixtures: promotedFixtures,
           matchHistory: [historyEntry, ...state.matchHistory].slice(0, 50),
           nextHistoryId: state.nextHistoryId + 1,
           boardConfidence,
-          pressEvents: pressEvents.slice(0, 20),
-          nextPressId: state.nextPressId + (userParticipated ? 1 : 0),
+          squadMorale,
+          fanSentiment,
+          inbox,
+          pressEvents: pressEvents.slice(0, MAX_PRESS_ITEMS),
+          nextPressId,
+          nextInboxId,
           currentWeek: shouldAdvanceWeek ? playedWeek + 1 : state.currentWeek,
+          currentDate: nextDate,
+          currentPhase: 'post_match',
         });
       },
 
@@ -345,7 +624,7 @@ export const useAppStore = create<AppState>()(
         return true;
       },
 
-      advanceWeek: () => {
+      continueGame: () => {
         const state = get();
         const clubId = state.selectedClubId;
         if (!clubId) return;
@@ -353,53 +632,157 @@ export const useAppStore = create<AppState>()(
         const club = getOfflineClub(clubId);
         if (!club) return;
 
-        const leagueId = club.leagueId || 1;
-        let standings = state.leagueStandings[leagueId] ?? createFreshStandings(leagueId);
-        const week = state.currentWeek;
+        const activeDate = state.currentDate || getCareerStartDate(state.fixtures);
+        let nextDate = addDays(activeDate, 1);
+        let currentPhase: CareerPhase = 'normal_day';
+        let inbox = state.inbox.slice();
+        let pressEvents = state.pressEvents.slice();
+        let nextInboxId = state.nextInboxId;
+        let nextPressId = state.nextPressId;
+        let squadMorale = state.squadMorale;
+        let fanSentiment = state.fanSentiment;
 
-        const bgMatches = simulateBackgroundMatches(leagueId, week, clubId, state.fixtures);
-        for (const m of bgMatches) {
-          standings = applyResultToStandings(
-            standings,
-            m.homeClubId,
-            m.awayClubId,
-            m.homeScore,
-            m.awayScore,
-          );
+        const currentFixtures = promoteFixturesForDate(state.fixtures, activeDate, clubId);
+        const nextFixture = getNextUserFixture(currentFixtures, clubId);
+
+        if (nextFixture && nextFixture.matchDate <= activeDate) {
+          set({
+            fixtures: promoteFixturesForDate(state.fixtures, activeDate, clubId),
+            currentPhase: 'matchday',
+            inbox: pushInbox(
+              inbox,
+              createInboxItem(
+                nextInboxId,
+                'Matchday Is Here',
+                `${club.name} face ${getOfflineClub(nextFixture.homeClubId === clubId ? nextFixture.awayClubId : nextFixture.homeClubId)?.name ?? 'their opponents'} today. The tunnel is close now.`,
+                'match',
+                'high',
+                activeDate,
+                { actionLabel: 'Play Match', actionPath: '/match-simulation', fixtureId: nextFixture.id },
+              ),
+            ),
+            nextInboxId: nextInboxId + 1,
+          });
+          return;
         }
 
-        const pressEvents = [...state.pressEvents];
-        if (bgMatches.length > 0) {
-          const sample = bgMatches[0];
-          const home = getOfflineClub(sample.homeClubId);
-          const away = getOfflineClub(sample.awayClubId);
-          if (home && away) {
+        if (state.currentPhase === 'post_match') {
+          currentPhase = 'recovery_day';
+          squadMorale = clamp(squadMorale - 1, 0, 100);
+          inbox = pushInbox(
+            inbox,
+            createInboxItem(
+              nextInboxId++,
+              'Recovery Day',
+              `The coaching staff have dialed training back. Focus is on recovery, atmosphere, and preparing the next story around ${club.name}.`,
+              'club',
+              'medium',
+              nextDate,
+              { actionLabel: 'Open Squad', actionPath: '/squad' },
+            ),
+          );
+        } else if (!nextFixture) {
+          inbox = pushInbox(
+            inbox,
+            createInboxItem(
+              nextInboxId++,
+              'Season Checkpoint',
+              `There is no scheduled fixture in the queue right now. The backroom staff are waiting for the next calendar update.`,
+              'board',
+              'medium',
+              nextDate,
+            ),
+          );
+        } else {
+          const opponentId = nextFixture.homeClubId === clubId ? nextFixture.awayClubId : nextFixture.homeClubId;
+          const opponent = getOfflineClub(opponentId);
+          const daysUntilMatch = diffDays(nextDate, nextFixture.matchDate);
+
+          if (daysUntilMatch > 2) {
+            inbox = pushInbox(inbox, createTrainingReport(clubId, nextDate, nextInboxId++));
+            if ((state.currentWeek + nextInboxId) % 2 === 0) {
+              inbox = pushInbox(inbox, createWorldRoundup(clubId, state.currentWeek, nextDate, nextInboxId++));
+            }
+          } else if (daysUntilMatch === 2 && opponent) {
+            inbox = pushInbox(
+              inbox,
+              createInboxItem(
+                nextInboxId++,
+                'Pundit Preview',
+                `Two days out: the panel believes ${opponent.name} can be hurt in transition, but they also think your full-backs will be tested for ninety minutes.`,
+                'media',
+                'medium',
+                nextDate,
+                { actionLabel: 'Open Press', actionPath: '/press', fixtureId: nextFixture.id },
+              ),
+            );
             pressEvents.unshift({
-              id: state.nextPressId,
-              headline: `${home.shortName} ${sample.homeScore}-${sample.awayScore} ${away.shortName} — ${club.league} roundup`,
-              time: '1h',
-              category: 'result',
+              id: nextPressId++,
+              headline: `Pundits debate whether ${club.shortName} can control the rhythm against ${opponent.shortName}.`,
+              time: 'Just now',
+              category: 'preview',
+            });
+          } else if (daysUntilMatch === 1 && opponent) {
+            currentPhase = 'match_eve';
+            squadMorale = clamp(squadMorale + 1, 0, 100);
+            fanSentiment = clamp(fanSentiment + 1, 0, 100);
+            inbox = pushInbox(
+              inbox,
+              createInboxItem(
+                nextInboxId++,
+                'Match Eve Briefing',
+                `${opponent.name} await tomorrow. Media pressure is building, predicted lineups are circulating, and your words in the press room can shape the mood.`,
+                'match',
+                'high',
+                nextDate,
+                { actionLabel: 'Hold Press Conference', actionPath: '/press', fixtureId: nextFixture.id },
+              ),
+            );
+            pressEvents.unshift({
+              id: nextPressId++,
+              headline: `${club.shortName} vs ${opponent.shortName}: analysts expect a tight tactical duel under the lights.`,
+              time: 'Just now',
+              category: 'preview',
+            });
+          } else if (opponent) {
+            currentPhase = 'matchday';
+            nextDate = nextFixture.matchDate;
+            inbox = pushInbox(
+              inbox,
+              createInboxItem(
+                nextInboxId++,
+                'Kickoff Approaches',
+                `${opponent.name} are waiting. The crowd is building, the pundits have made their calls, and it is time for your team talk.`,
+                'match',
+                'high',
+                nextDate,
+                { actionLabel: 'Play Match', actionPath: '/match-simulation', fixtureId: nextFixture.id },
+              ),
+            );
+            pressEvents.unshift({
+              id: nextPressId++,
+              headline: `Kickoff day: ${club.shortName} meet ${opponent.shortName} with the spotlight fully on the dugout.`,
+              time: 'Just now',
+              category: 'preview',
             });
           }
         }
 
-        const myRow = standings.find((r) => r.clubId === clubId);
-        const myPosition = myRow ? standings.indexOf(myRow) + 1 : 0;
-        let boardConfidence = state.boardConfidence;
-        if (myRow) {
-          if (myPosition <= 4) boardConfidence = Math.min(100, boardConfidence + 2);
-          else if (myPosition >= standings.length - 3) boardConfidence = Math.max(20, boardConfidence - 3);
-        }
-
-        const isNewSeason = week >= 38;
         set({
-          leagueStandings: { ...state.leagueStandings, [leagueId]: standings },
-          currentWeek: isNewSeason ? 1 : week + 1,
-          currentSeason: isNewSeason ? state.currentSeason + 1 : state.currentSeason,
-          boardConfidence,
-          pressEvents: pressEvents.slice(0, 20),
-          nextPressId: state.nextPressId + (bgMatches.length > 0 ? 1 : 0),
+          currentDate: nextDate,
+          currentPhase,
+          fixtures: promoteFixturesForDate(state.fixtures, nextDate, clubId),
+          squadMorale,
+          fanSentiment,
+          inbox,
+          pressEvents: pressEvents.slice(0, MAX_PRESS_ITEMS),
+          nextInboxId,
+          nextPressId,
         });
+      },
+
+      advanceWeek: () => {
+        get().continueGame();
       },
 
       setCurrentSeason: (s) => set({ currentSeason: s }),
@@ -443,6 +826,8 @@ export const useAppStore = create<AppState>()(
         sfxVolume: state.sfxVolume,
         currentSeason: state.currentSeason,
         currentWeek: state.currentWeek,
+        currentDate: state.currentDate,
+        currentPhase: state.currentPhase,
         managerName: state.managerName,
         managerNationality: state.managerNationality,
         managerStyle: state.managerStyle,
@@ -458,9 +843,13 @@ export const useAppStore = create<AppState>()(
         clubBudgets: state.clubBudgets,
         tactics: state.tactics,
         boardConfidence: state.boardConfidence,
+        squadMorale: state.squadMorale,
+        fanSentiment: state.fanSentiment,
+        inbox: state.inbox,
         pressEvents: state.pressEvents,
         nextHistoryId: state.nextHistoryId,
         nextPressId: state.nextPressId,
+        nextInboxId: state.nextInboxId,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);

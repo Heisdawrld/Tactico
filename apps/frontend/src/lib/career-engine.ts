@@ -112,18 +112,21 @@ export function createUserFixtures(clubId: number): CareerFixture[] {
   const leagueClubs = OFFLINE_CLUBS.filter((c) => c.league === club.league && c.id !== clubId);
   const fixtures: CareerFixture[] = [];
   let id = 1;
+  const seasonStart = new Date('2026-08-16T12:00:00Z');
 
   for (let week = 1; week <= 8; week++) {
     const opp = leagueClubs[(week - 1) % leagueClubs.length];
     const isHome = week % 2 === 1;
+    const matchDate = new Date(seasonStart);
+    matchDate.setUTCDate(seasonStart.getUTCDate() + (week - 1) * 7);
     fixtures.push({
       id: id++,
       homeClubId: isHome ? clubId : opp.id,
       awayClubId: isHome ? opp.id : clubId,
       homeScore: null,
       awayScore: null,
-      status: week === 1 ? 'live' : 'scheduled',
-      matchDate: `2026-0${Math.min(8 + week, 9)}-15`,
+      status: 'scheduled',
+      matchDate: matchDate.toISOString().slice(0, 10),
       competition: club.league,
       week,
     });
@@ -300,20 +303,9 @@ export function markFixturePlayed(
   homeScore: number,
   awayScore: number,
 ): CareerFixture[] {
-  const updated = fixtures.map((f) => {
+  return fixtures.map((f) => {
     if (f.id !== fixtureId) return f;
     return { ...f, homeScore, awayScore, status: 'finished' as FixtureStatus };
-  });
-
-  const playedWeek = updated.find((f) => f.id === fixtureId)?.week;
-  if (playedWeek == null) return updated;
-
-  const nextWeek = playedWeek + 1;
-  return updated.map((f) => {
-    if (f.week === nextWeek && f.status === 'scheduled') {
-      return { ...f, status: 'live' as FixtureStatus };
-    }
-    return f;
   });
 }
 

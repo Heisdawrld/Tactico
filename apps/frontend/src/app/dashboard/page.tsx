@@ -1,429 +1,424 @@
-'use client'
+'use client';
 
 export const dynamic = 'force-dynamic';
 
 import { useMemo } from 'react';
 import Link from 'next/link';
 import {
-  Trophy, Users, Wallet, Building2, TrendingUp, Activity,
-  ArrowUpRight, ArrowDownRight, ChevronRight, Star,
-  Calendar, Target, Shield, Flame, Zap, Eye, Quote,
+  Calendar,
+  ChevronRight,
+  Clock3,
+  Mic,
+  Newspaper,
+  PlayCircle,
+  Shield,
+  Star,
+  Target,
+  Trophy,
+  Users,
+  Wallet,
 } from 'lucide-react';
-import { Club } from '@/types/club';
-import { Player } from '@/types/player';
-import { useAppStore } from '@/lib/store';
+import { useAppStore, type InboxItem } from '@/lib/store';
 import { useSelectedClub } from '@/lib/useSelectedClub';
+import { getOfflineClub } from '@/lib/game-data';
+import { getNextUserFixture } from '@/lib/career-engine';
 import { playSfx } from '@/lib/audio';
 import { cn, formatCurrency, formatNumber } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { StatBlock, RatingBadge, ProgressBar, Sparkline } from '@/components/ui/Stat';
-import {
-  StaggerContainer, StaggerItem,
-  AnimatedCounter, FadeInOnView, GlowOrb, ParticleField,
-  ShimmerText, ScaleIn,
-} from '@/components/ui/motion';
-import {
-  getOfflineClub, getOfflineSquad, getOfflineFixtures,
-  getOfflineLeagueTable, getOfflineNews, OFFLINE_CLUBS,
-} from '@/lib/game-data';
+import { ProgressBar, RatingBadge } from '@/components/ui/Stat';
 
-/**
- * Dashboard — the showcase page.
- *
- * Uses OFFLINE game data (no database required) for instant load.
- * Falls back to API if offline data unavailable.
- */
+function diffDays(currentDate: string, targetDate: string): number {
+  const current = new Date(`${currentDate}T12:00:00Z`);
+  const target = new Date(`${targetDate}T12:00:00Z`);
+  return Math.round((target.getTime() - current.getTime()) / 86_400_000);
+}
+
+function getPhaseLabel(phase: string): string {
+  switch (phase) {
+    case 'match_eve':
+      return 'Match Eve';
+    case 'matchday':
+      return 'Matchday';
+    case 'post_match':
+      return 'Post Match';
+    case 'recovery_day':
+      return 'Recovery Day';
+    default:
+      return 'Normal Day';
+  }
+}
+
+function getPriorityVariant(priority: InboxItem['priority']) {
+  if (priority === 'high') return 'gold';
+  if (priority === 'medium') return 'info';
+  return 'outline';
+}
+
+function getCategoryIcon(category: InboxItem['category']) {
+  if (category === 'match') return Calendar;
+  if (category === 'media') return Mic;
+  if (category === 'board') return Shield;
+  if (category === 'world') return Newspaper;
+  return Users;
+}
+
 export default function DashboardPage() {
-  const { club, hydrated } = useSelectedClub();
-  const currentSeason = useAppStore((s) => s.currentSeason);
-  const currentWeek = useAppStore((s) => s.currentWeek);
-  const advanceWeek = useAppStore((s) => s.advanceWeek);
+  const { club } = useSelectedClub();
+  const currentSeason = useAppStore((state) => state.currentSeason);
+  const currentWeek = useAppStore((state) => state.currentWeek);
+  const currentDate = useAppStore((state) => state.currentDate);
+  const currentPhase = useAppStore((state) => state.currentPhase);
+  const continueGame = useAppStore((state) => state.continueGame);
+  const fixtures = useAppStore((state) => state.fixtures);
+  const inbox = useAppStore((state) => state.inbox);
+  const pressEvents = useAppStore((state) => state.pressEvents);
+  const boardConfidence = useAppStore((state) => state.boardConfidence);
+  const squadMorale = useAppStore((state) => state.squadMorale);
+  const fanSentiment = useAppStore((state) => state.fanSentiment);
+  const clubBudgets = useAppStore((state) => state.clubBudgets);
+  const leagueStandings = useAppStore((state) => state.leagueStandings);
+  const getSquad = useAppStore((state) => state.getSquad);
 
-  // Use offline data — instant, no API calls, no loading state
-
-  const players = useMemo(() => {
-    if (!club) return [];
-    return getOfflineSquad(club.id);
-  }, [club]);
-
-  const fixtures = useMemo(() => {
-    if (!club) return [];
-    return getOfflineFixtures(club.id);
-  }, [club]);
-
-  const news = useMemo(() => {
-    if (!club) return [];
-    return getOfflineNews(club.id);
-  }, [club]);
-
-  // ---------- DERIVED DATA ----------
+  const squad = useMemo(() => (club ? getSquad(club.id) : []), [club, getSquad]);
   const topPlayers = useMemo(
-    () => [...players].sort((a, b) => b.overallRating - a.overallRating).slice(0, 5),
-    [players]
+    () => [...squad].sort((a, b) => b.overallRating - a.overallRating).slice(0, 5),
+    [squad],
   );
-  const avgRating = useMemo(
-    () => (players.length ? Math.round(players.reduce((s, p) => s + p.overallRating, 0) / players.length) : 0),
-    [players]
+  const nextFixture = useMemo(
+    () => (club ? getNextUserFixture(fixtures, club.id) : null),
+    [club, fixtures],
   );
-  const totalWages = useMemo(
-    () => players.reduce((s, p) => s + (p.wage || 0), 0),
-    [players]
-  );
+  const nextOpponent = useMemo(() => {
+    if (!club || !nextFixture) return null;
+    const opponentId = nextFixture.homeClubId === club.id ? nextFixture.awayClubId : nextFixture.homeClubId;
+    return getOfflineClub(opponentId);
+  }, [club, nextFixture]);
+  const daysUntilMatch = nextFixture && currentDate ? diffDays(currentDate, nextFixture.matchDate) : null;
+  const standings = club ? leagueStandings[club.leagueId || 1] ?? [] : [];
+  const topStandings = useMemo(() => {
+    if (!club) return [];
+    const top = standings.slice(0, 5);
+    const userRow = standings.find((row) => row.clubId === club.id);
+    const inTop = top.some((row) => row.clubId === club.id);
+    return userRow && !inTop ? [...top, userRow] : top;
+  }, [club, standings]);
+  const transferBudget = club ? clubBudgets[club.id] ?? club.transferBudget : 0;
 
-  // ---------- NO CLUB SELECTED ----------
   if (!club) {
     return (
-      <div className="relative z-10">
-        <div className="flex flex-col items-center justify-center h-full p-12 gap-6 text-center">
-          <div className="w-20 h-20 rounded-full bg-gold-soft flex items-center justify-center">
-            <Trophy className="w-10 h-10 text-gold-300" />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-3xl font-headline font-bold gradient-text-premium">No Club Selected</h1>
-            <p className="text-tertiary-c text-sm max-w-md">
-              Choose a club to begin your managerial career. Every decision will define your legacy.
-            </p>
-          </div>
-          <Link href="/start">
-            <Button size="lg">
-              Select a Club
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </Link>
-        </div>
+      <div className="relative z-10 flex min-h-[70vh] items-center justify-center px-6">
+        <Card className="max-w-xl text-center">
+          <CardContent className="space-y-5 py-12">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gold-soft">
+              <Trophy className="h-10 w-10 text-gold-300" />
+            </div>
+            <div>
+              <h1 className="font-headline text-3xl font-bold text-primary-c">No Club Selected</h1>
+              <p className="mt-2 text-sm text-tertiary-c">
+                Start a career to unlock the dashboard, inbox flow, and matchday buildup.
+              </p>
+            </div>
+            <Link href="/start">
+              <Button size="lg">
+                Select a Club
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  // ---------- MAIN DASHBOARD ----------
   return (
-    <div className="relative z-10">
-      <div className="relative">
-        {/* Decorative background */}
-        <GlowOrb size={500} position="top-right" opacity={0.08} />
-        <GlowOrb size={400} position="bottom-left" opacity={0.06} />
-
-        {/* ============ HERO ============ */}
-        <section className="relative px-6 lg:px-8 pt-6 pb-4">
-          <StaggerContainer className="flex flex-col lg:flex-row lg:items-center gap-6" stagger={0.08}>
-            {/* Club identity */}
-            <StaggerItem className="flex items-center gap-5 flex-1 min-w-0">
+    <div className="relative z-10 px-4 py-6 pb-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="rounded-2xl border border-white/8 bg-surface-1/70 p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-4">
               <div
-                className="relative w-20 h-20 rounded-xl shrink-0 flex items-center justify-center shadow-2xl overflow-hidden"
-                style={{
-                  background: `linear-gradient(135deg, ${club.homeKitColor || '#FFD700'}, ${(club.homeKitColor || '#FFD700')}88)`,
-                }}
+                className="flex h-20 w-20 items-center justify-center rounded-2xl shadow-2xl"
+                style={{ background: `linear-gradient(135deg, ${club.homeKitColor}, ${club.awayKitColor})` }}
               >
-                <span className="font-headline font-black text-3xl text-black/80 tracking-tighter">
-                  {club.name.split(' ').map(w => w[0]).slice(0, 3).join('')}
+                <span className="font-headline text-3xl font-black text-black/75">
+                  {club.shortName.slice(0, 3)}
                 </span>
-                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent" />
               </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="gold" size="sm">{club.league?.toUpperCase() || 'LEAGUE'}</Badge>
-                  <Badge variant="outline" size="sm">{club.country?.toUpperCase() || '—'}</Badge>
+              <div>
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <Badge variant="gold" size="sm">{club.league.toUpperCase()}</Badge>
+                  <Badge variant="outline" size="sm">{club.country.toUpperCase()}</Badge>
+                  <Badge variant={currentPhase === 'matchday' ? 'danger' : 'info'} size="sm">
+                    {getPhaseLabel(currentPhase).toUpperCase()}
+                  </Badge>
                 </div>
-                <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c text-truncate-1">
-                  {club.name}
-                </h1>
-                <p className="text-xs text-tertiary-c font-mono tracking-wider mt-1">
-                  SEASON {currentSeason} · WEEK {currentWeek} · CAP {formatNumber(club.stadiumCapacity)}
+                <h1 className="font-headline text-3xl font-bold text-primary-c lg:text-4xl">{club.name}</h1>
+                <p className="mt-1 text-xs font-mono tracking-widest text-tertiary-c">
+                  SEASON {currentSeason} · WEEK {currentWeek} · DATE {currentDate || '2026-08-13'}
                 </p>
               </div>
-            </StaggerItem>
+            </div>
 
-            {/* Quick stats */}
-            <StaggerItem className="grid grid-cols-3 gap-3 lg:gap-4 shrink-0">
-              <HeroStat icon={<Star className="w-3.5 h-3.5" />} label="REP" value={club.reputation} tone="gold" />
-              <HeroStat icon={<Users className="w-3.5 h-3.5" />} label="SQUAD" value={players.length} />
-              <HeroStat icon={<Activity className="w-3.5 h-3.5" />} label="AVG" value={avgRating} tone="success" />
-            </StaggerItem>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <HeroStat icon={<Star className="h-3.5 w-3.5" />} label="REP" value={club.reputation} tone="gold" />
+              <HeroStat icon={<Users className="h-3.5 w-3.5" />} label="SQUAD" value={squad.length} />
+              <HeroStat icon={<Wallet className="h-3.5 w-3.5" />} label="BUDGET" value={formatCurrency(transferBudget)} />
+              <HeroStat
+                icon={<Calendar className="h-3.5 w-3.5" />}
+                label="NEXT"
+                value={
+                  daysUntilMatch == null
+                    ? '—'
+                    : daysUntilMatch <= 0
+                      ? 'TODAY'
+                      : `${daysUntilMatch}D`
+                }
+                tone={daysUntilMatch != null && daysUntilMatch <= 1 ? 'gold' : 'default'}
+              />
+            </div>
+          </div>
 
-            {/* Action buttons */}
-            <StaggerItem className="flex gap-2 shrink-0">
+          <div className="mt-6 flex flex-col gap-3 border-t border-white/6 pt-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-mono uppercase tracking-widest text-tertiary-c">Command Center</p>
+              <p className="mt-1 text-sm text-secondary-c">
+                {currentPhase === 'matchday'
+                  ? `Everything points to ${nextOpponent?.name ?? 'your next fixture'}. The buildup is done.`
+                  : currentPhase === 'match_eve'
+                    ? `The noise is rising ahead of ${nextOpponent?.name ?? 'the next match'}. One more day and it is kickoff.`
+                    : `Use Continue to move the world one meaningful day at a time until the next match becomes the story.`}
+              </p>
+            </div>
+            <div className="flex gap-2">
               <Link href="/tactics">
-                <Button variant="gold" size="md" className="w-full lg:w-auto">
-                  <Target className="w-4 h-4" /> Set Tactics
+                <Button variant="secondary">
+                  <Target className="h-4 w-4" />
+                  Tactics
                 </Button>
               </Link>
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={() => { advanceWeek(); playSfx('advance-week'); }}
-              >
-                <ChevronRight className="w-4 h-4" /> Advance Week
-              </Button>
-            </StaggerItem>
-          </StaggerContainer>
+              {currentPhase === 'matchday' ? (
+                <Link href="/match-simulation" onClick={() => playSfx('whistle')}>
+                  <Button variant="gold">
+                    <PlayCircle className="h-4 w-4" />
+                    Play Match
+                  </Button>
+                </Link>
+              ) : (
+                <Button
+                  variant="gold"
+                  onClick={() => {
+                    continueGame();
+                    playSfx('advance-week');
+                  }}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                  Continue
+                </Button>
+              )}
+            </div>
+          </div>
         </section>
 
-        {/* ============ KPI ROW (Bloomberg-dense, 6 tiles) ============ */}
-        <section className="px-6 lg:px-8 pb-4">
-          <div className="section-header">Key Performance Indicators</div>
-          <StaggerContainer className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2" stagger={0.04}>
-            <KpiTile
-              icon={<Trophy className="w-3.5 h-3.5" />}
-              label="LEAGUE POS"
-              value="2nd"
-              delta={1}
-              spark={[5, 4, 4, 3, 3, 2, 2]}
-              tone="gold"
-            />
-            <KpiTile
-              icon={<Target className="w-3.5 h-3.5" />}
-              label="GOALS"
-              value={<AnimatedCounter value={58} />}
-              delta={4}
-              spark={[3, 2, 4, 3, 5, 2, 4]}
-              tone="success"
-            />
-            <KpiTile
-              icon={<Shield className="w-3.5 h-3.5" />}
-              label="CONCEDED"
-              value={<AnimatedCounter value={21} />}
-              delta={-2}
-              spark={[2, 1, 3, 2, 1, 2, 1]}
-              tone="danger"
-            />
-            <KpiTile
-              icon={<Activity className="w-3.5 h-3.5" />}
-              label="POSSESSION"
-              value={<><AnimatedCounter value={62.4} decimals={1} suffix="%" /></>}
-              delta={1}
-              spark={[58, 60, 61, 59, 62, 61, 62]}
-              tone="gold"
-            />
-            <KpiTile
-              icon={<Flame className="w-3.5 h-3.5" />}
-              label="MORALE"
-              value="HIGH"
-              delta={1}
-              spark={[70, 75, 80, 78, 82, 85, 88]}
-              tone="success"
-            />
-            <KpiTile
-              icon={<Zap className="w-3.5 h-3.5" />}
-              label="FATIGUE"
-              value="MED"
-              delta={-1}
-              spark={[40, 45, 50, 55, 48, 52, 55]}
-              tone="warning"
-            />
-          </StaggerContainer>
-        </section>
-
-        {/* ============ TWO-COLUMN ROW ============ */}
-        <section className="px-6 lg:px-8 pb-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* LEFT (2/3): Top Performers */}
-          <Card className="lg:col-span-2">
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <Card className="xl:col-span-2">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <Star className="w-4 h-4 text-gold-300" />
-                <CardTitle>Top Performers</CardTitle>
-                <CardDescription>Best-rated players this season</CardDescription>
+                <Newspaper className="h-4 w-4 text-gold-300" />
+                <CardTitle>Inbox</CardTitle>
+                <CardDescription>What needs your attention right now</CardDescription>
               </div>
-              <Link href="/squad" className="text-xs text-gold-300 hover:text-gold-200 flex items-center gap-1">
-                View Squad <ChevronRight className="w-3 h-3" />
-              </Link>
             </CardHeader>
             <CardContent className="!p-0">
-              {topPlayers.length === 0 ? (
-                <div className="p-8 text-center text-tertiary-c text-sm">
-                  No players loaded. Run <code className="text-gold-300">pnpm db:seed</code> to populate.
-                </div>
-              ) : (
-                <div className="divide-y divide-white/3">
-                  {topPlayers.map((player, idx) => (
-                    <div
-                      key={player.id}
-                      className="flex items-center gap-4 px-4 py-2.5 hover:bg-gold-soft/40 transition-colors group cursor-pointer"
-                    >
-                      <span className="w-5 text-center text-[10px] font-mono text-tertiary-c">
-                        {String(idx + 1).padStart(2, '0')}
-                      </span>
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-surface-3 to-surface-4 flex items-center justify-center text-xs font-bold text-secondary-c shrink-0">
-                        {player.firstName?.[0]}{player.lastName?.[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm text-primary-c text-truncate-1">
-                          {player.firstName} {player.lastName}
+              <div className="divide-y divide-white/4">
+                {inbox.slice(0, 6).map((item) => {
+                  const Icon = getCategoryIcon(item.category);
+                  return (
+                    <div key={item.id} className="px-4 py-3 transition-colors hover:bg-white/3">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 rounded-md bg-surface-2 p-2 text-gold-300">
+                          <Icon className="h-4 w-4" />
                         </div>
-                        <div className="text-[10px] text-tertiary-c font-mono tracking-wide">
-                          {player.position} · AGE {player.age}
-                        </div>
-                      </div>
-                      <div className="hidden md:flex items-center gap-3 text-xs font-mono">
-                        <div className="flex flex-col items-end">
-                          <span className="text-[9px] text-tertiary-c tracking-widest">PAC</span>
-                          <span className="text-secondary-c tabular-nums">{player.pace || '—'}</span>
-                        </div>
-                        <div className="flex flex-col items-end">
-                          <span className="text-[9px] text-tertiary-c tracking-widest">SHO</span>
-                          <span className="text-secondary-c tabular-nums">{player.shooting || '—'}</span>
-                        </div>
-                        <div className="flex flex-col items-end">
-                          <span className="text-[9px] text-tertiary-c tracking-widest">PAS</span>
-                          <span className="text-secondary-c tabular-nums">{player.passing || '—'}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <RatingBadge rating={player.overallRating} size="sm" />
-                        <div className="hidden md:flex flex-col items-end ml-1">
-                          <span className="text-[9px] text-tertiary-c tracking-widest">POT</span>
-                          <span className="text-gold-300 font-mono font-bold text-xs tabular-nums">{player.potentialRating}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="mb-1 flex flex-wrap items-center gap-2">
+                            <Badge variant={getPriorityVariant(item.priority)} size="sm">
+                              {item.priority.toUpperCase()}
+                            </Badge>
+                            <span className="text-[10px] font-mono uppercase tracking-widest text-tertiary-c">
+                              {item.category}
+                            </span>
+                            <span className="text-[10px] font-mono text-tertiary-c">{item.createdAt}</span>
+                          </div>
+                          <p className="text-sm font-medium text-primary-c">{item.title}</p>
+                          <p className="mt-1 text-sm text-secondary-c">{item.body}</p>
+                          {item.actionPath && item.actionLabel ? (
+                            <div className="mt-2">
+                              <Link href={item.actionPath} className="text-xs font-semibold text-gold-300 hover:text-gold-200">
+                                {item.actionLabel} <ChevronRight className="inline h-3 w-3" />
+                              </Link>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-gold-300" />
+                <CardTitle>Next Match</CardTitle>
+                <CardDescription>The next thing the world cares about</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {nextFixture && nextOpponent ? (
+                <>
+                  <div className="rounded-xl border border-white/6 bg-surface-2/50 p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <Badge variant={nextFixture.homeClubId === club.id ? 'success' : 'warning'} size="sm">
+                        {nextFixture.homeClubId === club.id ? 'HOME' : 'AWAY'}
+                      </Badge>
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-tertiary-c">
+                        {nextFixture.competition}
+                      </span>
+                    </div>
+                    <div className="text-xl font-bold text-primary-c">{nextOpponent.name}</div>
+                    <div className="mt-1 text-xs font-mono tracking-wide text-tertiary-c">
+                      {nextFixture.matchDate} · {nextFixture.homeClubId === club.id ? club.stadium : nextOpponent.stadium}
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <MiniStat label="COUNTDOWN" value={daysUntilMatch == null ? '—' : daysUntilMatch <= 0 ? 'TODAY' : `${daysUntilMatch} DAYS`} />
+                      <MiniStat label="MATCH STATUS" value={currentPhase === 'matchday' ? 'READY' : currentPhase === 'match_eve' ? 'EVE' : 'BUILDUP'} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-sm text-secondary-c">
+                    <p>
+                      {daysUntilMatch != null && daysUntilMatch > 1
+                        ? `The media expect this one to test your shape and patience.`
+                        : daysUntilMatch === 1
+                          ? `Press day is here. Pundits want to know whether your setup can tilt the game.`
+                          : `The tunnel is waiting. This is where your week turns into a result.`}
+                    </p>
+                    <div className="flex gap-2">
+                      <Link href="/matches">
+                        <Button variant="secondary" size="sm">Fixture List</Button>
+                      </Link>
+                      {currentPhase === 'matchday' ? (
+                        <Link href="/match-simulation">
+                          <Button variant="gold" size="sm">
+                            <PlayCircle className="h-4 w-4" />
+                            Kick Off
+                          </Button>
+                        </Link>
+                      ) : (
+                        <Link href="/press">
+                          <Button variant="secondary" size="sm">
+                            <Mic className="h-4 w-4" />
+                            Media Room
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-secondary-c">No upcoming fixture is loaded yet.</p>
               )}
             </CardContent>
           </Card>
+        </section>
 
-          {/* RIGHT (1/3): Upcoming Fixtures */}
+        <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-gold-300" />
-                <CardTitle>Upcoming</CardTitle>
+                <Shield className="h-4 w-4 text-gold-300" />
+                <CardTitle>Club Pulse</CardTitle>
               </div>
-              <Link href="/matches" className="text-xs text-gold-300 hover:text-gold-200 flex items-center gap-1">
-                All <ChevronRight className="w-3 h-3" />
-              </Link>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <MetricRow label="Board Confidence" value={boardConfidence} tone="gold" />
+              <MetricRow label="Squad Morale" value={squadMorale} tone="success" />
+              <MetricRow label="Fan Sentiment" value={fanSentiment} tone="warning" />
+              <div className="rounded-lg border border-white/6 bg-surface-2/50 p-3">
+                <div className="text-[10px] font-mono uppercase tracking-widest text-tertiary-c">Transfer Budget</div>
+                <div className="mt-1 text-2xl font-bold text-primary-c">{formatCurrency(transferBudget)}</div>
+                <div className="mt-1 text-xs text-tertiary-c">Stadium cap {formatNumber(club.stadiumCapacity)}</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Trophy className="h-4 w-4 text-gold-300" />
+                <CardTitle>League Snapshot</CardTitle>
+              </div>
             </CardHeader>
             <CardContent className="!p-0">
-              <div className="divide-y divide-white/3">
-                {[
-                  { opp: 'ARS', home: true, comp: 'PL', week: 'W29', date: 'SAT' },
-                  { opp: 'CHE', home: false, comp: 'PL', week: 'W30', date: 'NEXT' },
-                  { opp: 'LIV', home: true, comp: 'UCL', week: 'QF', date: 'TUE' },
-                ].map((m, i) => (
-                  <div key={i} className="px-4 py-3 hover:bg-white/3 transition-colors group">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={m.home ? 'success' : 'warning'} size="sm">
-                          {m.home ? 'HOME' : 'AWAY'}
-                        </Badge>
-                        <span className="font-display font-bold text-base text-primary-c">{m.opp}</span>
+              <div className="divide-y divide-white/4">
+                {topStandings.map((row, index) => {
+                  const isUserClub = row.clubId === club.id;
+                  const position = standings.findIndex((item) => item.clubId === row.clubId) + 1;
+                  return (
+                    <div
+                      key={row.clubId}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-3',
+                        isUserClub && 'bg-gold-soft/10',
+                      )}
+                    >
+                      <div className="w-6 text-center font-mono text-sm text-tertiary-c">{position || index + 1}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className={cn('text-sm font-medium', isUserClub ? 'text-gold-200' : 'text-primary-c')}>
+                          {row.clubName}
+                        </div>
+                        <div className="text-[10px] font-mono uppercase tracking-widest text-tertiary-c">
+                          P {row.played} · GD {row.goalDifference >= 0 ? `+${row.goalDifference}` : row.goalDifference}
+                        </div>
                       </div>
-                      <span className="text-[9px] text-tertiary-c font-mono">{m.date}</span>
+                      <div className="text-right">
+                        <div className="font-mono text-lg font-bold text-primary-c">{row.points}</div>
+                        <div className="text-[10px] font-mono text-tertiary-c">PTS</div>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-tertiary-c font-mono tracking-wide">
-                        {m.comp} · {m.week}
-                      </span>
-                      <Link
-                        href="/match-simulation"
-                        onClick={() => playSfx('whistle')}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-gold-300 font-semibold flex items-center gap-1"
-                      >
-                        PLAY <ArrowUpRight className="w-3 h-3" />
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* ============ THREE-COLUMN ROW ============ */}
-        <section className="px-6 lg:px-8 pb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Form guide */}
-          <Card hover>
-            <CardHeader>
-              <CardTitle>Form (Last 5)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-1.5 mb-3">
-                {['W', 'W', 'D', 'W', 'W'].map((r, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      'flex-1 h-9 rounded-md flex items-center justify-center font-bold text-sm',
-                      r === 'W' && 'bg-success/20 text-success border border-success/30',
-                      r === 'D' && 'bg-warning/20 text-warning border border-warning/30',
-                      r === 'L' && 'bg-danger/20 text-danger border border-danger/30'
-                    )}
-                  >
-                    {r}
-                  </div>
-                ))}
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-tertiary-c font-mono tracking-wide">POINTS PER GAME</span>
-                  <span className="font-mono font-bold text-success tabular-nums">2.20</span>
-                </div>
-                <ProgressBar value={73} tone="success" showLabel />
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-tertiary-c font-mono tracking-wide">VS LAST 5</span>
-                  <span className="font-mono text-success flex items-center gap-1">
-                    <ArrowUpRight className="w-3 h-3" /> +18%
-                  </span>
-                </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
 
-          {/* Board confidence */}
-          <Card hover>
-            <CardHeader>
-              <CardTitle>Board Confidence</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-headline font-bold text-gold-300">82%</span>
-                <span className="text-xs text-success flex items-center gap-0.5">
-                  <ArrowUpRight className="w-3 h-3" /> 4%
-                </span>
-              </div>
-              <ProgressBar value={82} tone="gold" />
-              <div className="space-y-1.5 pt-1">
-                {[
-                  { label: 'League Position', value: 90, tone: 'success' as const },
-                  { label: 'Cup Progress', value: 75, tone: 'gold' as const },
-                  { label: 'Finances', value: 85, tone: 'success' as const },
-                  { label: 'Fan Mood', value: 70, tone: 'warning' as const },
-                ].map((row) => (
-                  <div key={row.label} className="flex items-center gap-3 text-xs">
-                    <span className="text-tertiary-c w-24 text-truncate-1">{row.label}</span>
-                    <div className="flex-1"><ProgressBar value={row.value} tone={row.tone} /></div>
-                    <span className="font-mono text-secondary-c tabular-nums w-8 text-right">{row.value}%</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Injury report */}
-          <Card hover>
+          <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-danger" />
-                <CardTitle>Injury Report</CardTitle>
+                <Star className="h-4 w-4 text-gold-300" />
+                <CardTitle>Top Players</CardTitle>
+                <CardDescription>Who can decide the next match</CardDescription>
               </div>
-              <Badge variant="danger" size="sm">2 ACTIVE</Badge>
             </CardHeader>
             <CardContent className="!p-0">
-              <div className="divide-y divide-white/3">
-                {[
-                  { name: 'M. Salah', injury: 'Hamstring', eta: '3 weeks', severity: 'med' },
-                  { name: 'V. Dijk', injury: 'Knock', eta: '1 week', severity: 'low' },
-                ].map((inj, i) => (
-                  <div key={i} className="px-4 py-2.5 hover:bg-white/3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-sm font-medium text-primary-c">{inj.name}</div>
-                        <div className="text-[10px] text-tertiary-c font-mono">{inj.injury} · ETA {inj.eta}</div>
-                      </div>
-                      <Badge variant={inj.severity === 'low' ? 'warning' : 'danger'} size="sm">
-                        {inj.severity.toUpperCase()}
-                      </Badge>
+              <div className="divide-y divide-white/4">
+                {topPlayers.map((player) => (
+                  <div key={player.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-2 text-xs font-bold text-secondary-c">
+                      {player.firstName[0]}{player.lastName[0]}
                     </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-primary-c">
+                        {player.firstName} {player.lastName}
+                      </div>
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-tertiary-c">
+                        {player.position} · AGE {player.age}
+                      </div>
+                    </div>
+                    <RatingBadge rating={player.overallRating} size="sm" />
                   </div>
                 ))}
               </div>
@@ -431,97 +426,62 @@ export default function DashboardPage() {
           </Card>
         </section>
 
-        {/* ============ FINANCE OVERVIEW ============ */}
-        <section className="px-6 lg:px-8 pb-8">
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-gold-300" />
-                <CardTitle>Finance Overview</CardTitle>
-                <CardDescription>Weekly cash flow</CardDescription>
-              </div>
-              <Badge variant="success" size="sm">+12% WoW</Badge>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <StatBlock
-                  label="BALANCE"
-                  value={<AnimatedCounter value={club.finances || 0} format="currency" />}
-                  tone="gold"
-                  delta={2}
-                  deltaSuffix="M"
-                />
-                <StatBlock
-                  label="WEEKLY WAGES"
-                  value={<AnimatedCounter value={totalWages} format="currency" />}
-                  delta={-1}
-                  deltaSuffix="K"
-                  tone="danger"
-                />
-                <StatBlock
-                  label="TRANSFER BUDGET"
-                  value={formatCurrency(Math.round((club.finances || 50_000_000) * 0.4))}
-                  tone="success"
-                />
-                <StatBlock
-                  label="WEEKLY REVENUE"
-                  value={formatCurrency(2_400_000)}
-                  delta={8}
-                  deltaSuffix="%"
-                  tone="success"
-                />
-              </div>
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-3 rounded-md bg-surface-2/50 border border-white/3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] text-tertiary-c font-mono tracking-widest">INCOME TREND (12W)</span>
-                    <Sparkline data={[2.1, 2.3, 2.0, 2.4, 2.5, 2.3, 2.6, 2.4, 2.5, 2.7, 2.6, 2.4]} tone="success" width={120} height={28} />
-                  </div>
-                  <ProgressBar value={78} tone="success" showLabel />
-                </div>
-                <div className="p-3 rounded-md bg-surface-2/50 border border-white/3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] text-tertiary-c font-mono tracking-widest">EXPENSE TREND (12W)</span>
-                    <Sparkline data={[1.8, 1.9, 2.0, 1.9, 2.1, 2.0, 1.9, 1.8, 2.0, 1.9, 1.8, 1.9]} tone="danger" width={120} height={28} />
-                  </div>
-                  <ProgressBar value={62} tone="danger" showLabel />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        {/* ============ MEDIA BUZZ (footer) ============ */}
-        <section className="px-6 lg:px-8 pb-8">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Quote className="w-4 h-4 text-gold-300" />
+                <Clock3 className="h-4 w-4 text-gold-300" />
                 <CardTitle>Media Buzz</CardTitle>
-                <CardDescription>Latest stories about your club</CardDescription>
+                <CardDescription>How the world is framing your club</CardDescription>
               </div>
-              <Badge variant="outline" size="sm">LIVE</Badge>
             </CardHeader>
             <CardContent className="!p-0">
-              <div className="divide-y divide-white/3">
-                {[
-                  { source: 'BBC Sport', headline: 'Title race heats up as City edge past rivals', time: '2h', tone: 'gold' },
-                  { source: 'The Athletic', headline: 'Tactical analysis: How the 4-3-3 is finally clicking', time: '4h', tone: 'info' },
-                  { source: 'Sky Sports', headline: 'Transfer insider: €80M bid prepared for summer window', time: '6h', tone: 'warning' },
-                ].map((story, i) => (
-                  <div key={i} className="px-4 py-3 hover:bg-white/3 cursor-pointer group">
-                    <div className="flex items-start gap-3">
-                      <Badge variant={story.tone as 'gold' | 'info' | 'warning'} size="sm">{story.source}</Badge>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-primary-c group-hover:text-gold-200 transition-colors text-truncate-1">
-                          {story.headline}
-                        </p>
-                        <p className="text-[10px] text-tertiary-c font-mono mt-0.5">{story.time} ago</p>
-                      </div>
-                      <Eye className="w-3.5 h-3.5 text-tertiary-c opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
+              <div className="divide-y divide-white/4">
+                {pressEvents.length === 0 ? (
+                  <div className="px-4 py-5 text-sm text-secondary-c">
+                    The media room is quiet for now. Hit Continue and the world will start talking.
                   </div>
-                ))}
+                ) : (
+                  pressEvents.slice(0, 5).map((story) => (
+                    <div key={story.id} className="px-4 py-3">
+                      <div className="mb-1 flex items-center gap-2">
+                        <Badge variant="outline" size="sm">TACTICO WIRE</Badge>
+                        <span className="text-[10px] font-mono uppercase tracking-widest text-tertiary-c">{story.time}</span>
+                      </div>
+                      <p className="text-sm text-primary-c">{story.headline}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-gold-300" />
+                <CardTitle>Manager Summary</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-secondary-c">
+              <p>
+                The dashboard now tracks your football week live: inbox items, public mood, next fixture pressure,
+                and the growing matchday narrative around {club.name}.
+              </p>
+              <p>
+                The current goal is to make Continue the heartbeat of the save, so every click moves the world one
+                step closer to kickoff instead of just skipping screens.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Link href="/career">
+                  <Button variant="secondary" size="sm">Career</Button>
+                </Link>
+                <Link href="/matches">
+                  <Button variant="secondary" size="sm">Matches</Button>
+                </Link>
+                <Link href="/press">
+                  <Button variant="secondary" size="sm">Press</Button>
+                </Link>
               </div>
             </CardContent>
           </Card>
@@ -530,10 +490,6 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-/* ============================================================
-   LOCAL COMPONENTS
-   ============================================================ */
 
 function HeroStat({
   icon,
@@ -544,22 +500,46 @@ function HeroStat({
   icon: React.ReactNode;
   label: string;
   value: React.ReactNode;
-  tone?: 'default' | 'gold' | 'success';
+  tone?: 'default' | 'gold';
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-lg bg-surface-2/50 border border-white/5 min-w-[80px]">
-      <div className="flex items-center gap-1.5 text-tertiary-c">
+    <div className="rounded-xl border border-white/6 bg-surface-2/50 px-4 py-3">
+      <div className="mb-1 flex items-center gap-1.5 text-tertiary-c">
         {icon}
-        <span className="text-[9px] font-mono uppercase tracking-widest font-bold">{label}</span>
+        <span className="text-[9px] font-mono uppercase tracking-widest">{label}</span>
       </div>
-      <span className={cn(
-        'font-headline font-bold text-xl tabular-nums leading-none',
-        tone === 'gold' && 'text-gold-300',
-        tone === 'success' && 'text-success',
-        tone === 'default' && 'text-primary-c'
-      )}>
+      <div className={cn('font-headline text-lg font-bold text-primary-c', tone === 'gold' && 'text-gold-300')}>
         {value}
-      </span>
+      </div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-white/6 bg-surface-3/50 p-3">
+      <div className="text-[9px] font-mono uppercase tracking-widest text-tertiary-c">{label}</div>
+      <div className="mt-1 text-sm font-semibold text-primary-c">{value}</div>
+    </div>
+  );
+}
+
+function MetricRow({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: 'gold' | 'success' | 'warning';
+}) {
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between text-xs">
+        <span className="font-mono uppercase tracking-widest text-tertiary-c">{label}</span>
+        <span className="font-mono text-primary-c">{value}%</span>
+      </div>
+      <ProgressBar value={value} tone={tone} />
     </div>
   );
 }
