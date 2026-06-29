@@ -760,7 +760,7 @@ export interface Player {
   goals?: number;
   assists?: number;
   averageRating?: number;
-  shirtNumber?: number;
+  shirtNumber?: number | null;
   foot?: string;
   height?: number;
   weight?: number;
