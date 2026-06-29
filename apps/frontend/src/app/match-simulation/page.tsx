@@ -8,7 +8,7 @@ import { useAppStore } from '@/lib/store';
 import { playSfx } from '@/lib/audio';
 import { SimulationEngine } from '@tactico/simulation-engine';
 import { MatchRenderer } from '@/lib/match-renderer';
-import type { MatchEvent, SimulationState, PhaseState } from '@tactico/simulation-engine';
+import type { MatchEvent, SimulationState, PhaseState, TeamInstructions } from '@tactico/simulation-engine';
 import { getOfflineClub, getOfflineSquad } from '@/lib/game-data';
 import { cn } from '@/lib/utils';
 
@@ -65,9 +65,9 @@ export default function MatchSimulationPage() {
 
     engineRef.current = engine;
 
-    // Initialize with squads and tactics
-    const homeInstructions = {
-      formation: homeClub?.coach === 'Pep Guardiola' ? '4-3-3' : '4-4-2',
+    // Initialize with squads and tactics - properly typed
+    const homeInstructions: TeamInstructions = {
+      formation: (homeClub?.coach === 'Pep Guardiola' ? '4-3-3' : '4-4-2') as any,
       pressingIntensity: 'high',
       pressingTrigger: 'aggressive',
       defensiveLine: 'high',
@@ -85,8 +85,8 @@ export default function MatchSimulationPage() {
       tackleHarder: false,
     };
 
-    const awayInstructions = {
-      formation: awayClub?.coach === 'Diego Simeone' ? '5-3-2' : '4-3-3',
+    const awayInstructions: TeamInstructions = {
+      formation: (awayClub?.coach === 'Diego Simeone' ? '5-3-2' : '4-3-3') as any,
       pressingIntensity: 'medium',
       pressingTrigger: 'standard',
       defensiveLine: 'medium',
