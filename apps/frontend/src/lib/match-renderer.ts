@@ -823,4 +823,3 @@ export class MatchRenderer {
   }
 }
 
-export { MatchRenderer };
