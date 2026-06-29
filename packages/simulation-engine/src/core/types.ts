@@ -1,22 +1,17 @@
-// TACTICO Simulation Engine - Core Types
+// TACTICO Simulation Engine - Core Types (Updated for Intelligent Engine)
 
 // ============================================
 // BASE TYPES
 // ============================================
 
-/** Unique identifier for entities */
 export type EntityId = number | string;
-
-/** Timestamp in ISO format */
 export type Timestamp = string;
 
-/** Coordinates on the pitch (0-1) */
 export interface Coordinates {
   x: number;
   y: number;
 }
 
-/** Vector for physics */
 export interface Vector {
   x: number;
   y: number;
@@ -26,8 +21,7 @@ export interface Vector {
 // MATCH TYPES
 // ============================================
 
-/** Match status */
-export type MatchStatus = 
+export type MatchStatus =
   | 'scheduled'
   | 'pre_match'
   | 'first_half'
@@ -38,8 +32,7 @@ export type MatchStatus =
   | 'completed'
   | 'abandoned';
 
-/** Match weather conditions */
-export type WeatherCondition = 
+export type WeatherCondition =
   | 'clear'
   | 'rain'
   | 'heavy_rain'
@@ -47,7 +40,6 @@ export type WeatherCondition =
   | 'windy'
   | 'fog';
 
-/** Match venue */
 export interface MatchVenue {
   id: EntityId;
   name: string;
@@ -57,21 +49,19 @@ export interface MatchVenue {
   pitchCondition: 'good' | 'average' | 'poor';
 }
 
-/** Match official */
 export interface MatchOfficial {
   id: EntityId;
   name: string;
   role: 'referee' | 'assistant_referee' | 'fourth_official';
-  reputation: number; // 1-100
-  strictness: number; // 1-100 (higher = more cards)
+  reputation: number;
+  strictness: number;
 }
 
 // ============================================
 // TEAM TYPES
 // ============================================
 
-/** Team formation */
-export type Formation = 
+export type Formation =
   | '4-4-2'
   | '4-3-3'
   | '3-5-2'
@@ -81,25 +71,22 @@ export type Formation =
   | '4-1-4-1'
   | '5-4-1';
 
-/** Team formation with player positions */
 export interface TeamFormation {
   formation: Formation;
   positions: FormationPosition[];
 }
 
-/** Position in formation */
 export interface FormationPosition {
   id: EntityId;
   role: PlayerRole;
-  x: number; // 0-1
-  y: number; // 0-1
+  x: number;
+  y: number;
   instructions?: PlayerInstructions;
 }
 
-/** Player role in formation */
-export type PlayerRole = 
+export type PlayerRole =
   | 'GK'
-  | 'SW'  // Sweeper Keeper
+  | 'SW'
   | 'CB'
   | 'RCB'
   | 'LCB'
@@ -124,7 +111,6 @@ export type PlayerRole =
   | 'LS'
   | 'RS';
 
-/** Player instructions within a formation */
 export interface PlayerInstructions {
   marking?: 'man' | 'zonal' | 'ball';
   pressingIntensity?: 'low' | 'medium' | 'high';
@@ -134,7 +120,6 @@ export interface PlayerInstructions {
   roamFromPosition?: boolean;
 }
 
-/** Team instructions */
 export interface TeamInstructions {
   formation: Formation;
   pressingIntensity: 'low' | 'medium' | 'high' | 'very_high';
@@ -154,8 +139,7 @@ export interface TeamInstructions {
   tackleHarder: boolean;
 }
 
-/** Team tactical style (high-level philosophy) */
-export type TacticalStyle = 
+export type TacticalStyle =
   | 'positional_play'
   | 'gegenpress'
   | 'low_block'
@@ -167,16 +151,15 @@ export type TacticalStyle =
   | 'vertical_tiki_taka'
   | 'high_press';
 
-/** Tactical DNA - Core philosophy of a team/manager */
 export interface TacticalDNA {
-  possession: number; // 0-100
-  pressing: number;    // 0-100
-  width: number;      // 0-100
-  tempo: number;      // 0-100
-  creativity: number; // 0-100
-  directness: number; // 0-100
-  defensiveLine: number; // 0-100
-  compactness: number; // 0-100
+  possession: number;
+  pressing: number;
+  width: number;
+  tempo: number;
+  creativity: number;
+  directness: number;
+  defensiveLine: number;
+  compactness: number;
   style: TacticalStyle;
 }
 
@@ -184,101 +167,89 @@ export interface TacticalDNA {
 // PLAYER TYPES
 // ============================================
 
-/** Player foot preference */
 export type FootPreference = 'right' | 'left' | 'both';
-
-/** Player injury status */
 export type InjuryStatus = 'fit' | 'injured' | 'suspended' | 'unavailable';
-
-/** Player contract type */
 export type ContractType = 'full_time' | 'loan' | 'youth' | 'trial';
 
-/** Player attributes (technical) */
 export interface TechnicalAttributes {
-  passing: number;        // 0-100
-  shooting: number;       // 0-100
-  dribbling: number;      // 0-100
-  ballControl: number;    // 0-100
-  firstTouch: number;     // 0-100
-  heading: number;         // 0-100
-  crossing: number;        // 0-100
-  finishing: number;       // 0-100
-  longShots: number;      // 0-100
-  setPieces: number;      // 0-100
-  penaltyTaking: number;   // 0-100
+  passing: number;
+  shooting: number;
+  dribbling: number;
+  ballControl: number;
+  firstTouch: number;
+  heading: number;
+  crossing: number;
+  finishing: number;
+  longShots: number;
+  setPieces: number;
+  penaltyTaking: number;
 }
 
-/** Player attributes (physical) */
 export interface PhysicalAttributes {
-  pace: number;           // 0-100
-  acceleration: number;   // 0-100
-  agility: number;        // 0-100
-  balance: number;        // 0-100
-  strength: number;       // 0-100
-  stamina: number;        // 0-100
-  jumpingReach: number;   // 0-100
-  naturalFitness: number; // 0-100 (hidden)
+  pace: number;
+  acceleration: number;
+  agility: number;
+  balance: number;
+  strength: number;
+  stamina: number;
+  jumpingReach: number;
+  naturalFitness: number;
 }
 
-/** Player attributes (mental) */
 export interface MentalAttributes {
-  aggression: number;      // 0-100
-  anticipation: number;   // 0-100
-  composure: number;      // 0-100
-  concentration: number;  // 0-100
-  creativity: number;      // 0-100
-  decisions: number;      // 0-100
-  determination: number;   // 0-100
-  flair: number;          // 0-100
-  leadership: number;     // 0-100
-  offTheBall: number;     // 0-100
-  positioning: number;     // 0-100
-  teamwork: number;       // 0-100
-  vision: number;         // 0-100
-  workRate: number;       // 0-100
+  aggression: number;
+  anticipation: number;
+  composure: number;
+  concentration: number;
+  creativity: number;
+  decisions: number;
+  determination: number;
+  flair: number;
+  leadership: number;
+  offTheBall: number;
+  positioning: number;
+  teamwork: number;
+  vision: number;
+  workRate: number;
 }
 
-/** Player hidden attributes */
 export interface HiddenAttributes {
-  professionalism: number;    // 0-100
-  consistency: number;       // 0-100
-  pressureHandling: number;   // 0-100
-  adaptability: number;      // 0-100
-  sportsmanship: number;     // 0-100
-  injuryProneness: number;   // 0-100 (lower = less injury prone)
-  controversy: number;        // 0-100
-  loyalty: number;            // 0-100
-  ambition: number;          // 0-100
-  hiddenPotential: number;   // 0-100 (affects development)
+  professionalism: number;
+  consistency: number;
+  pressureHandling: number;
+  adaptability: number;
+  sportsmanship: number;
+  injuryProneness: number;
+  controversy: number;
+  loyalty: number;
+  ambition: number;
+  hiddenPotential: number;
 }
 
-/** Player contract details */
 export interface PlayerContract {
   type: ContractType;
   startDate: Timestamp;
   expiryDate: Timestamp;
-  wage: number; // Weekly wage in USD
+  wage: number;
   signingBonus: number;
   releaseClause: number | null;
   loanClubId: EntityId | null;
   loanExpiry: Timestamp | null;
 }
 
-/** Player injury details */
 export interface PlayerInjury {
-  type: string; // e.g., 'hamstring', 'ankle', 'knee'
+  type: string;
   severity: 'minor' | 'moderate' | 'serious' | 'career_ending';
   durationDays: number;
   startDate: Timestamp;
   recoveryDate: Timestamp;
 }
 
-/** Player relationship with another entity */
 export interface PlayerRelationship {
   entityId: EntityId;
   entityType: 'player' | 'manager' | 'club' | 'staff';
   relationshipType: 'teammate' | 'rival' | 'mentor' | 'mentee' | 'friend' | 'enemy';
-  value: number; // -100 (hate) to +100 (love)
+  value: number;
   reason?: string;
 }
 
@@ -286,7 +257,6 @@ export interface PlayerRelationship {
 // EVENT TYPES
 // ============================================
 
-/** Base event type */
 export interface BaseEvent {
   id: EntityId;
   type: string;
@@ -295,9 +265,9 @@ export interface BaseEvent {
   minute: number;
   second: number;
   description: string;
+  commentary?: string;
 }
 
-/** Possession event */
 export interface PossessionEvent extends BaseEvent {
   type: 'possession';
   playerId: EntityId;
@@ -306,7 +276,6 @@ export interface PossessionEvent extends BaseEvent {
   previousHolder?: EntityId;
 }
 
-/** Pass event */
 export interface PassEvent extends BaseEvent {
   type: 'pass';
   passerId: EntityId;
@@ -316,11 +285,10 @@ export interface PassEvent extends BaseEvent {
   from: Coordinates;
   to: Coordinates;
   passType: 'short' | 'long' | 'through' | 'cross' | 'backheel' | 'header';
-  accuracy: number; // 0-100
+  accuracy: number;
   completion?: boolean;
 }
 
-/** Shot event */
 export interface ShotEvent extends BaseEvent {
   type: 'shot';
   shooterId: EntityId;
@@ -328,12 +296,11 @@ export interface ShotEvent extends BaseEvent {
   coordinates: Coordinates;
   shotType: 'first_time' | 'volley' | 'half_volley' | 'header' | 'bicycle_kick' | 'penalty' | 'free_kick';
   target: 'goal' | 'off_target' | 'blocked' | 'saved' | 'post' | 'bar';
-  xg: number; // Expected goals (0-1)
+  xg: number;
   onTarget: boolean;
-  goal?: GoalEvent; // If shot resulted in goal
+  goal?: GoalEvent;
 }
 
-/** Goal event */
 export interface GoalEvent extends BaseEvent {
   type: 'goal';
   scorerId: EntityId;
@@ -345,7 +312,6 @@ export interface GoalEvent extends BaseEvent {
   isOwnGoal: boolean;
 }
 
-/** Tackle event */
 export interface TackleEvent extends BaseEvent {
   type: 'tackle';
   tacklerId: EntityId;
@@ -358,7 +324,6 @@ export interface TackleEvent extends BaseEvent {
   foul?: FoulEvent;
 }
 
-/** Foul event */
 export interface FoulEvent extends BaseEvent {
   type: 'foul';
   foulerId: EntityId;
@@ -371,7 +336,6 @@ export interface FoulEvent extends BaseEvent {
   inBox: boolean;
 }
 
-/** Card event */
 export interface CardEvent extends BaseEvent {
   type: 'card';
   playerId: EntityId;
@@ -381,7 +345,6 @@ export interface CardEvent extends BaseEvent {
   coordinates: Coordinates;
 }
 
-/** Substitution event */
 export interface SubstitutionEvent extends BaseEvent {
   type: 'substitution';
   teamId: EntityId;
@@ -390,7 +353,6 @@ export interface SubstitutionEvent extends BaseEvent {
   reason: 'tactical' | 'injury' | 'fatigue' | 'red_card' | 'time_wasting';
 }
 
-/** Injury event */
 export interface InjuryEvent extends BaseEvent {
   type: 'injury';
   playerId: EntityId;
@@ -401,7 +363,6 @@ export interface InjuryEvent extends BaseEvent {
   coordinates: Coordinates;
 }
 
-/** Set piece event */
 export interface SetPieceEvent extends BaseEvent {
   type: 'set_piece';
   setPieceType: 'corner' | 'free_kick' | 'penalty' | 'throw_in' | 'goal_kick';
@@ -411,8 +372,33 @@ export interface SetPieceEvent extends BaseEvent {
   outcome?: 'goal' | 'save' | 'miss' | 'cleared' | 'ongoing';
 }
 
-/** Match event (union type) */
-export type MatchEvent = 
+export interface PressEvent extends BaseEvent {
+  type: 'press';
+  playerId: EntityId;
+  teamId: EntityId;
+  coordinates: Coordinates;
+  success: boolean;
+}
+
+export interface InterceptEvent extends BaseEvent {
+  type: 'intercept';
+  playerId: EntityId;
+  teamId: EntityId;
+  coordinates: Coordinates;
+  fromPasserId: EntityId;
+}
+
+export interface DribbleEvent extends BaseEvent {
+  type: 'dribble';
+  playerId: EntityId;
+  teamId: EntityId;
+  from: Coordinates;
+  to: Coordinates;
+  success: boolean;
+  beatenPlayerId?: EntityId;
+}
+
+export type MatchEvent =
   | PossessionEvent
   | PassEvent
   | ShotEvent
@@ -422,15 +408,17 @@ export type MatchEvent =
   | CardEvent
   | SubstitutionEvent
   | InjuryEvent
-  | SetPieceEvent;
+  | SetPieceEvent
+  | PressEvent
+  | InterceptEvent
+  | DribbleEvent;
 
 // ============================================
 // SIMULATION TYPES
 // ============================================
 
-/** Simulation configuration */
 export interface SimulationConfig {
-  tickRate: number; // ms per tick
+  tickRate: number;
   matchSpeed: 'slow' | 'normal' | 'fast' | 'instant';
   detailLevel: 'basic' | 'standard' | 'detailed' | 'full';
   enablePhysics: boolean;
@@ -438,21 +426,24 @@ export interface SimulationConfig {
   enableStats: boolean;
 }
 
-/** Simulation state */
 export interface SimulationState {
   isRunning: boolean;
   isPaused: boolean;
-  currentTime: number; // in seconds
-  totalTime: number; // total match duration in seconds
+  isHalfTime?: boolean;
+  isFullTime?: boolean;
+  currentTime: number;
+  totalTime: number;
   events: MatchEvent[];
   stats: MatchStats;
+  weatherEffects?: WeatherEffect;
+  homeScore?: number;
+  awayScore?: number;
 }
 
-/** Match statistics */
 export interface MatchStats {
   possession: {
-    home: number; // percentage
-    away: number; // percentage
+    home: number;
+    away: number;
   };
   shots: {
     home: number;
@@ -466,24 +457,24 @@ export interface MatchStats {
     home: {
       completed: number;
       attempted: number;
-      accuracy: number; // percentage
+      accuracy: number;
     };
     away: {
       completed: number;
       attempted: number;
-      accuracy: number; // percentage
+      accuracy: number;
     };
   };
   tackles: {
     home: {
       won: number;
       attempted: number;
-      successRate: number; // percentage
+      successRate: number;
     };
     away: {
       won: number;
       attempted: number;
-      successRate: number; // percentage
+      successRate: number;
     };
   };
   fouls: {
@@ -514,21 +505,20 @@ export interface MatchStats {
   };
 }
 
-/** Player match statistics */
 export interface PlayerMatchStats {
   playerId: EntityId;
   minutesPlayed: number;
-  rating: number; // 1-10
+  rating: number;
   goals: number;
   assists: number;
   shots: number;
   shotsOnTarget: number;
   passesCompleted: number;
   passesAttempted: number;
-  passAccuracy: number; // percentage
+  passAccuracy: number;
   tacklesWon: number;
   tacklesAttempted: number;
-  tackleSuccessRate: number; // percentage
+  tackleSuccessRate: number;
   fouls: number;
   foulsSuffered: number;
   yellowCards: number;
@@ -538,16 +528,15 @@ export interface PlayerMatchStats {
   blocks: number;
   dribblesCompleted: number;
   dribblesAttempted: number;
-  dribbleSuccessRate: number; // percentage
+  dribbleSuccessRate: number;
   aerialsWon: number;
   aerialsLost: number;
-  aerialSuccessRate: number; // percentage
-  distanceCovered: number; // in meters
+  aerialSuccessRate: number;
+  distanceCovered: number;
   sprints: number;
   highIntensityActions: number;
 }
 
-/** Team match statistics */
 export interface TeamMatchStats {
   teamId: EntityId;
   playerStats: PlayerMatchStats[];
@@ -560,8 +549,7 @@ export interface TeamMatchStats {
 // AI TYPES
 // ============================================
 
-/** AI decision type */
-export type AIDecisionType = 
+export type AIDecisionType =
   | 'pass'
   | 'shoot'
   | 'dribble'
@@ -578,37 +566,36 @@ export type AIDecisionType =
   | 'layoff'
   | 'flick_on';
 
-/** AI decision */
 export interface AIDecision {
   type: AIDecisionType;
   playerId: EntityId;
   teamId: EntityId;
-  confidence: number; // 0-100
-  target?: EntityId | Coordinates; // Target player or coordinates
-  power?: number; // 0-100
-  accuracy?: number; // 0-100
-  timestamp: number; // simulation time in ms
+  confidence: number;
+  target?: EntityId | Coordinates;
+  power?: number;
+  accuracy?: number;
+  timestamp: number;
 }
 
-/** AI player state */
 export interface AIPlayerState {
   playerId: EntityId;
   teamId: EntityId;
   position: PlayerRole;
   currentAction: AIDecisionType | null;
-  stamina: number; // 0-100
-  morale: number; // 0-100
-  confidence: number; // 0-100
-  fatigue: number; // 0-100
-  sharpness: number; // 0-100
+  stamina: number;
+  morale: number;
+  confidence: number;
+  fatigue: number;
+  sharpness: number;
   hasBall: boolean;
   inPossession: boolean;
-  marking: EntityId | null; // Player being marked
+  marking: EntityId | null;
   pressing: boolean;
   offsidePosition: Coordinates | null;
+  isInjured?: boolean;
+  isSentOff?: boolean;
 }
 
-/** AI team state */
 export interface AITeamState {
   teamId: EntityId;
   formation: Formation;
@@ -616,7 +603,7 @@ export interface AITeamState {
   tacticalDNA: TacticalDNA;
   playerStates: AIPlayerState[];
   inPossession: boolean;
-  pressingIntensity: number; // 0-100
+  pressingIntensity: number;
   defensiveShape: 'compact' | 'spread' | 'asymmetric';
   attackingShape: 'narrow' | 'wide' | 'overload_left' | 'overload_right';
 }
@@ -625,10 +612,8 @@ export interface AITeamState {
 // WORLD ENGINE TYPES
 // ============================================
 
-/** World tick type */
 export type WorldTickType = 'minute' | 'hour' | 'day' | 'week' | 'month';
 
-/** World state */
 export interface WorldState {
   id: EntityId;
   currentDate: Timestamp;
@@ -640,7 +625,6 @@ export interface WorldState {
   lastTickType: WorldTickType;
 }
 
-/** World update result */
 export interface WorldUpdateResult {
   timestamp: Timestamp;
   tickType: WorldTickType;
@@ -656,7 +640,6 @@ export interface WorldUpdateResult {
   };
 }
 
-/** Player update from world tick */
 export interface PlayerUpdate {
   playerId: EntityId;
   attributeChanges: Partial<TechnicalAttributes & PhysicalAttributes & MentalAttributes>;
@@ -668,7 +651,6 @@ export interface PlayerUpdate {
   reason: string;
 }
 
-/** Club update from world tick */
 export interface ClubUpdate {
   clubId: EntityId;
   reputationChange?: number;
@@ -680,6 +662,160 @@ export interface ClubUpdate {
     medicalCenter: number;
   }>;
   reason: string;
+}
+
+export interface TransferUpdate {
+  playerId: EntityId;
+  fromClubId: EntityId;
+  toClubId: EntityId;
+  fee: number;
+  type: 'transfer' | 'loan' | 'free';
+}
+
+export interface InjuryUpdate {
+  playerId: EntityId;
+  clubId: EntityId;
+  injuryType: string;
+  severity: PlayerInjury['severity'];
+  durationDays: number;
+}
+
+export interface ContractUpdate {
+  playerId: EntityId;
+  clubId: EntityId;
+  newWage?: number;
+  newExpiryDate?: Timestamp;
+  newReleaseClause?: number | null;
+}
+
+export interface FinanceUpdate {
+  clubId: EntityId;
+  incomeChange?: number;
+  expenseChange?: number;
+  transferBudgetChange?: number;
+  wageBudgetChange?: number;
+}
+
+export interface YouthUpdate {
+  clubId: EntityId;
+  newPlayers: Player[];
+  intakeQuality: number;
+}
+
+export interface MediaUpdate {
+  clubId: EntityId;
+  headline: string;
+  category: 'transfer' | 'result' | 'injury' | 'news' | 'rumor';
+  priority: 'low' | 'medium' | 'high';
+}
+
+// ============================================
+// WEATHER EFFECTS
+// ============================================
+
+export interface WeatherEffect {
+  name: string;
+  description: string;
+  ballSpeedModifier: number;
+  passAccuracyModifier: number;
+  shotAccuracyModifier: number;
+  playerSpeedModifier: number;
+  staminaDrainModifier: number;
+  injuryRateModifier: number;
+  slipChance: number;
+}
+
+// ============================================
+// PLAYER TYPE (for engine integration)
+// ============================================
+
+export interface Player {
+  id: number;
+  firstName: string;
+  lastName: string;
+  fullName?: string;
+  age: number;
+  nationality?: string;
+  clubId: number;
+  clubName?: string;
+  position: string;
+  overallRating: number;
+  potentialRating: number;
+  pace: number;
+  shooting: number;
+  passing: number;
+  dribbling: number;
+  defending: number;
+  physicality: number;
+  wage: number;
+  morale: number;
+  fatigue?: number;
+  sharpness?: number;
+  stamina?: number;
+  injuryStatus: string;
+  injury?: string | null;
+  marketValue?: number;
+  contractExpires?: string | null;
+  appearances?: number;
+  goals?: number;
+  assists?: number;
+  averageRating?: number;
+  shirtNumber?: number;
+  foot?: string;
+  height?: number;
+  weight?: number;
+}
+
+// ============================================
+// CLUB TYPE (for engine integration)
+// ============================================
+
+export interface Club {
+  id: number;
+  name: string;
+  shortName: string;
+  country: string;
+  league: string;
+  leagueId: number | null;
+  leagueReputation?: number;
+  reputation: number;
+  finances: number;
+  balance: number;
+  wageBudget: number;
+  transferBudget: number;
+  marketValue: number;
+  stadium: string | null;
+  stadiumCapacity: number;
+  trainingFacilities: number;
+  youthAcademy: number;
+  coach: string | null;
+  homeKitColor: string;
+  awayKitColor: string;
+}
+
+// ============================================
+// MATCH PHASE
+// ============================================
+
+export type MatchPhase =
+  | 'kickoff'
+  | 'build_up'
+  | 'transition'
+  | 'chance_creation'
+  | 'shot'
+  | 'set_piece'
+  | 'dead_ball'
+  | 'half_time'
+  | 'full_time';
+
+export interface PhaseState {
+  phase: MatchPhase;
+  possessionTeam: number | null;
+  ballCarrier: number | null;
+  lastPasser: number | null;
+  pressureLevel: number;
+  dangerLevel: number;
+  phaseTimer: number;
 }
 
 // ============================================
@@ -700,4 +836,7 @@ export type {
   ContractType,
   TacticalStyle,
   WorldTickType,
+  WeatherEffect,
+  MatchPhase,
+  PhaseState,
 };
