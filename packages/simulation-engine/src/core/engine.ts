@@ -1348,5 +1348,3 @@ export class SimulationEngine {
   }
 }
 
-export { Matter };
-export type { Engine as PhysicsEngine } from 'matter-js';
