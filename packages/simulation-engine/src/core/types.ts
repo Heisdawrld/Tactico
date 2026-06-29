@@ -735,9 +735,9 @@ export interface Player {
   lastName: string;
   fullName?: string;
   age: number;
-  nationality?: string;
+  nationality?: string | null;
   clubId: number;
-  clubName?: string;
+  clubName?: string | null;
   position: string;
   overallRating: number;
   potentialRating: number;
@@ -761,9 +761,9 @@ export interface Player {
   assists?: number;
   averageRating?: number;
   shirtNumber?: number | null;
-  foot?: string;
-  height?: number;
-  weight?: number;
+  foot?: string | null;
+  height?: number | null;
+  weight?: number | null;
 }
 
 // ============================================
