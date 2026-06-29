@@ -72,7 +72,7 @@ export type Formation =
   | '5-4-1';
 
 export interface TeamFormation {
-  formation: Formation;
+  formation: Formation | string;
   positions: FormationPosition[];
 }
 
@@ -121,7 +121,7 @@ export interface PlayerInstructions {
 }
 
 export interface TeamInstructions {
-  formation: Formation;
+  formation: Formation | string;
   pressingIntensity: 'low' | 'medium' | 'high' | 'very_high';
   pressingTrigger: 'standard' | 'aggressive' | 'extreme';
   defensiveLine: 'low' | 'medium' | 'high' | 'very_high';
@@ -541,7 +541,7 @@ export interface TeamMatchStats {
   teamId: EntityId;
   playerStats: PlayerMatchStats[];
   averageRating: number;
-  formation: Formation;
+  formation: Formation | string;
   instructions: TeamInstructions;
 }
 
@@ -598,7 +598,7 @@ export interface AIPlayerState {
 
 export interface AITeamState {
   teamId: EntityId;
-  formation: Formation;
+  formation: Formation | string;
   instructions: TeamInstructions;
   tacticalDNA: TacticalDNA;
   playerStates: AIPlayerState[];
