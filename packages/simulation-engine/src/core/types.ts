@@ -735,10 +735,19 @@ export interface Player {
   lastName: string;
   fullName?: string;
   age: number;
+  dateOfBirth?: string | null;
   nationality?: string | null;
+  nationalityCode?: string | null;
   clubId: number;
   clubName?: string | null;
+  clubShort?: string;
+  clubColor?: string;
   position: string;
+  secondaryPositions?: string | null;
+  foot?: string | null;
+  height?: number | null;
+  weight?: number | null;
+  shirtNumber?: number | null;
   overallRating: number;
   potentialRating: number;
   pace: number;
@@ -754,16 +763,14 @@ export interface Player {
   stamina?: number;
   injuryStatus: string;
   injury?: string | null;
-  marketValue?: number;
+  marketValue?: number | null;
   contractExpires?: string | null;
-  appearances?: number;
-  goals?: number;
-  assists?: number;
-  averageRating?: number;
-  shirtNumber?: number | null;
-  foot?: string | null;
-  height?: number | null;
-  weight?: number | null;
+  appearances?: number | null;
+  goals?: number | null;
+  assists?: number | null;
+  cleanSheets?: number | null;
+  averageRating?: number | null;
+  attributes?: any | null;
 }
 
 // ============================================
