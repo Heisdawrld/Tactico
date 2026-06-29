@@ -817,26 +817,3 @@ export interface PhaseState {
   dangerLevel: number;
   phaseTimer: number;
 }
-
-// ============================================
-// EXPORT ALL TYPES
-// ============================================
-
-export type {
-  EntityId,
-  Timestamp,
-  Coordinates,
-  Vector,
-  MatchStatus,
-  WeatherCondition,
-  Formation,
-  PlayerRole,
-  FootPreference,
-  InjuryStatus,
-  ContractType,
-  TacticalStyle,
-  WorldTickType,
-  WeatherEffect,
-  MatchPhase,
-  PhaseState,
-};
