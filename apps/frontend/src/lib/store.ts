@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Player } from '@/types/player';
+import { clamp } from '@/lib/utils';
 import { getOfflineClub, OFFLINE_CLUBS } from '@/lib/game-data';
 import {
   type CareerFixture,
@@ -71,9 +72,7 @@ export interface InboxItem {
 const MAX_INBOX_ITEMS = 16;
 const MAX_PRESS_ITEMS = 20;
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
+// clamp imported from @/lib/utils
 
 function addDays(dateString: string, days: number): string {
   const date = new Date(`${dateString}T12:00:00Z`);

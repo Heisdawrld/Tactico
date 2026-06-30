@@ -3,7 +3,7 @@
  * Handles user registration, login, sessions, and OAuth
  */
 
-import { db } from '@tactico/database';
+import { db, getDbClient } from '@tactico/database';
 import bcrypt from 'bcryptjs';
 import { SignJWT, jwtVerify } from 'jose';
 

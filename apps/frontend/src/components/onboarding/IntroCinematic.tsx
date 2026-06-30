@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TacticoLogo } from '@/components/ui/TacticoLogo';
 import { getCrowdAudio } from '@/lib/crowd-audio';
@@ -48,6 +48,16 @@ export function IntroCinematic({ onComplete }: IntroCinematicProps) {
   const [phase, setPhase] = useState<Phase>('black');
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
+
+  // Pre-generate particle positions to avoid Math.random() in render
+  const particles = useMemo(() => Array.from({ length: 60 }, () => ({
+    left: Math.random() * 100,
+    top: Math.random() * 100,
+    width: 1 + Math.random() * 2,
+    height: 1 + Math.random() * 2,
+    duration: 3 + Math.random() * 4,
+    delay: Math.random() * 3,
+  })), []);
   const crowdRef = useRef(getCrowdAudio());
   const completedRef = useRef(false);
 
@@ -301,24 +311,24 @@ export function IntroCinematic({ onComplete }: IntroCinematicProps) {
         )}
       </AnimatePresence>
 
-      {/* Particle field during lights/logo phases */}
+      {/* Particle field during lights/logo phases — pre-generated positions */}
       {phase !== 'black' && phase !== 'loading' && (
         <div className="absolute inset-0 pointer-events-none">
-          {Array.from({ length: 12 }).map((_, i) => (
+          {particles.slice(0, 12).map((p, i) => (
             <motion.span
               key={i}
               className="absolute rounded-full bg-gold-300"
               style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                width: 1 + Math.random() * 2,
-                height: 1 + Math.random() * 2,
+                left: `${p.left}%`,
+                top: `${p.top}%`,
+                width: p.width,
+                height: p.height,
               }}
               animate={{ opacity: [0, 0.6, 0], y: [0, -20, 0] }}
               transition={{
-                duration: 3 + Math.random() * 4,
+                duration: p.duration,
                 repeat: Infinity,
-                delay: Math.random() * 3,
+                delay: p.delay,
               }}
             />
           ))}

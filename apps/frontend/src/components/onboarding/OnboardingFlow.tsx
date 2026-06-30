@@ -36,8 +36,13 @@ export function OnboardingFlow() {
     setStep('manager');
   }, [selectClub]);
 
-  const handleComplete = useCallback(() => {
+  const handleComplete = useCallback((data: { name: string; nationality: string; style: string; formation: string; philosophy: string }) => {
     useAppStore.setState({
+      managerName: data.name,
+      managerNationality: data.nationality,
+      managerStyle: data.style,
+      managerFormation: data.formation,
+      managerPhilosophy: data.philosophy,
       currentSeason: 1,
       currentWeek: getStartingWeek(startDate),
     });

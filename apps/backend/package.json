@@ -1,31 +1,7 @@
 {
   "name": "tactico-backend",
   "version": "0.1.0",
-  "description": "Backend API for TACTICO",
-  "main": "index.js",
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "db:init": "pnpm --filter @tactico/database init",
-    "db:seed": "ts-node ../../scripts/seed-db.ts",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "next": "^14.0.0",
-    "@types/node": "^20.0.0",
-    "socket.io": "^4.7.0",
-    "cors": "^2.8.5",
-    "@libsql/client": "^0.4.0",
-    "next-auth": "beta",
-    "@auth/core": "^0.30.0",
-    "drizzle-orm": "^0.30.0",
-    "@auth/drizzle-adapter": "^1.0.0",
-    "@tactico/database": "workspace:*",
-     "@tactico/shared": "workspace:*"
-   },
-  "devDependencies": {
-    "typescript": "^5.0.0",
-    "@types/cors": "^2.8.17"
-  }
+  "private": true,
+  "description": "DEPRECATED: Backend logic moved to apps/frontend/server.ts (custom server). This package is kept for monorepo compatibility.",
+  "scripts": {}
 }

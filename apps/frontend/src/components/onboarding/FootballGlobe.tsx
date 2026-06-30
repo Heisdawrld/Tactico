@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
@@ -63,6 +63,15 @@ export function FootballGlobe({ onComplete }: FootballGlobeProps) {
   const [showNarration, setShowNarration] = useState(false);
   const [zooming, setZooming] = useState(false);
 
+  // Pre-generate star positions to avoid Math.random() in render
+  const stars = useMemo(() => Array.from({ length: 80 }, () => ({
+    left: Math.random() * 100,
+    top: Math.random() * 100,
+    size: Math.random() < 0.8 ? 1 : 2,
+    duration: 2 + Math.random() * 3,
+    delay: Math.random() * 2,
+  })), []);
+
   useEffect(() => {
     // After all cities have appeared (~6s), show narration
     const t1 = setTimeout(() => setShowNarration(true), 6500);
@@ -90,23 +99,23 @@ export function FootballGlobe({ onComplete }: FootballGlobeProps) {
         }}
       />
 
-      {/* Stars */}
+      {/* Stars — pre-generated to avoid re-render glitches */}
       <div className="absolute inset-0">
-        {Array.from({ length: 80 }).map((_, i) => (
+        {stars.map((star, i) => (
           <motion.span
             key={i}
             className="absolute rounded-full bg-white"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              width: Math.random() < 0.8 ? 1 : 2,
-              height: Math.random() < 0.8 ? 1 : 2,
+              left: `${star.left}%`,
+              top: `${star.top}%`,
+              width: star.size,
+              height: star.size,
             }}
             animate={{ opacity: [0.2, 0.8, 0.2] }}
             transition={{
-              duration: 2 + Math.random() * 3,
+              duration: star.duration,
               repeat: Infinity,
-              delay: Math.random() * 2,
+              delay: star.delay,
             }}
           />
         ))}

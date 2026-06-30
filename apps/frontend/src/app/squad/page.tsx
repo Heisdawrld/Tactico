@@ -1,6 +1,5 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
 
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,6 +19,7 @@ import {
   StaggerContainer, StaggerItem, FadeInOnView,
   AnimatedCounter,
 } from '@/components/ui/motion';
+import { Calendar, DollarSign, Star, Users } from 'lucide-react';
 
 // Position groups for organizing the squad
 const POSITION_GROUPS: { id: string; label: string; positions: PlayerPosition[]; color: string }[] = [
@@ -311,9 +311,6 @@ function SquadContent() {
     </div>
   );
 }
-
-// Import additional icons
-import { Users, Star, Calendar, DollarSign } from 'lucide-react';
 
 /**
  * Squad Page - View and manage your team's players

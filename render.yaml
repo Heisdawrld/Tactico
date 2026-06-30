@@ -1,12 +1,12 @@
 services:
-  # Tactico Application (Combined Frontend + Backend)
+  # Tactico Application (Custom Server: Next.js + Socket.io + Game Engine)
   - type: web
     name: tactico
     env: node
     region: oregon
     plan: starter
     buildCommand: cd apps/frontend && pnpm install && pnpm build
-    startCommand: cd apps/frontend && pnpm start
+    startCommand: cd apps/frontend && NODE_ENV=production pnpm start
     envVars:
       - key: NODE_ENV
         value: production

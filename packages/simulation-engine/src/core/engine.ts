@@ -1,7 +1,18 @@
 // TACTICO Simulation Engine — Intelligent Match Simulation
 // Version 2.0: Attribute-based AI, tactical DNA influence, match phases
 
-import * as Matter from 'matter-js';
+// Matter.js is optional — only available in browser context.
+// Server-side simulation works without physics rendering.
+let Matter: any = null;
+try {
+  // Dynamic import — won't crash in Node.js
+  if (typeof window !== 'undefined') {
+    Matter = require('matter-js');
+  }
+} catch {
+  // Running on server — physics disabled, simulation still works
+}
+
 import {
   MatchState,
   MatchEvent,
@@ -605,7 +616,7 @@ export class SimulationEngine {
       phaseTimer: 0,
     };
 
-    if (this.config.enablePhysics) {
+    if (this.config.enablePhysics && Matter) {
       this.physicsEngine = Matter.Engine.create();
       this.setupPhysicsWorld();
     }

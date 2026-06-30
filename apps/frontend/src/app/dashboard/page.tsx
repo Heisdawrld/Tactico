@@ -1,13 +1,15 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
 
 import { useMemo } from 'react';
 import Link from 'next/link';
 import {
+  ArrowLeftRight,
   Calendar,
   ChevronRight,
+  ClipboardList,
   Clock3,
+  Dumbbell,
   Mic,
   Newspaper,
   PlayCircle,
@@ -359,7 +361,7 @@ function DashboardContent() {
                       <div className="font-medium text-sm truncate">{item.title}</div>
                       <div className="text-xs text-muted-foreground line-clamp-2">{item.body}</div>
                       <div className="mt-2 flex items-center gap-2">
-                        <Badge variant={getPriorityVariant(item.priority)} size="xs">
+                        <Badge variant={getPriorityVariant(item.priority)} size="sm">
                           {item.priority.toUpperCase()}
                         </Badge>
                         <span className="text-[10px] text-muted-foreground">
@@ -419,12 +421,6 @@ function DashboardContent() {
   );
 }
 
-// Import additional icons
-import { ClipboardList, Dumbbell, ArrowLeftRight } from 'lucide-react';
-
-/**
- * Dashboard Page - Main hub for club management
- */
 export default function DashboardPage() {
   return (
     <PageWrapper requireClub={true} loadingMessage="Loading dashboard...">

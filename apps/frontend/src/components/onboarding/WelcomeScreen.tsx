@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { TacticoLogo } from '@/components/ui/TacticoLogo';
 
@@ -17,6 +18,15 @@ interface WelcomeScreenProps {
 }
 
 export function WelcomeScreen({ onContinue }: WelcomeScreenProps) {
+  // Pre-generate particle positions to avoid Math.random() in render
+  const particles = useMemo(() => Array.from({ length: 30 }, () => ({
+    left: Math.random() * 100,
+    top: Math.random() * 100,
+    width: 1 + Math.random() * 2,
+    height: 1 + Math.random() * 2,
+    duration: 4 + Math.random() * 4,
+    delay: Math.random() * 3,
+  })), []);
   return (
     <motion.div
       className="fixed inset-0 z-max flex flex-col items-center justify-center bg-surface-base overflow-hidden"
@@ -33,20 +43,20 @@ export function WelcomeScreen({ onContinue }: WelcomeScreenProps) {
         }}
       />
 
-      {/* Subtle floating particles */}
-      {Array.from({ length: 12 }).map((_, i) => (
+      {/* Subtle floating particles — pre-generated positions */}
+      {particles.slice(0, 12).map((p, i) => (
         <motion.span
           key={i}
           className="absolute rounded-full bg-gold-300"
           style={{
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            width: 1 + Math.random() * 2,
-            height: 1 + Math.random() * 2,
+            left: `${p.left}%`,
+            top: `${p.top}%`,
+            width: p.width,
+            height: p.height,
             opacity: 0.3,
           }}
           animate={{ y: [0, -30, 0], opacity: [0.1, 0.4, 0.1] }}
-          transition={{ duration: 4 + Math.random() * 4, repeat: Infinity, delay: Math.random() * 3 }}
+          transition={{ duration: p.duration, repeat: Infinity, delay: p.delay }}
         />
       ))}
 

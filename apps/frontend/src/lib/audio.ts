@@ -201,9 +201,19 @@ export function playSfx(name: SfxName) {
  * Play a raw Web Audio click — no dependency on the engine or audio files.
  * This is the fallback that ALWAYS works (even before engine is initialized).
  */
+// Shared AudioContext — reuse to avoid browser limit (~6 concurrent contexts)
+let _sharedCtx: AudioContext | null = null;
+function getAudioContext(): AudioContext {
+  if (!_sharedCtx || _sharedCtx.state === 'closed') {
+    _sharedCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  }
+  return _sharedCtx;
+}
+
 export function playRawClick(volume: number = 0.1) {
   try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') ctx.resume();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
@@ -215,8 +225,6 @@ export function playRawClick(volume: number = 0.1) {
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.08);
-    // Close context after sound finishes
-    setTimeout(() => ctx.close(), 200);
   } catch {}
 }
 

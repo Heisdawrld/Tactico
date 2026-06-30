@@ -43,7 +43,7 @@ const PHILOSOPHIES = [
 ];
 
 interface ManagerCreationProps {
-  onComplete: () => void;
+  onComplete: (data: { name: string; nationality: string; style: string; formation: string; philosophy: string }) => void;
   onBack: () => void;
 }
 
@@ -197,7 +197,7 @@ export function ManagerCreation({ onComplete, onBack }: ManagerCreationProps) {
       {/* Continue bar — always visible, disabled until valid */}
       <div className="sticky bottom-0 px-6 py-4 safe-area-bottom glass-heavy border-t border-white/5">
         <button
-          onClick={canContinue ? onComplete : undefined}
+          onClick={canContinue ? () => onComplete({ name, nationality, style: style!, formation, philosophy: philosophy! }) : undefined}
           disabled={!canContinue}
           className={`w-full max-w-2xl mx-auto flex items-center justify-center gap-2 px-6 py-3.5 rounded-md font-display font-bold text-base transition-all
             ${canContinue

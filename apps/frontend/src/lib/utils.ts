@@ -12,10 +12,10 @@ export function cn(...inputs: ClassValue[]): string {
 }
 
 /**
- * Format a number as currency (default: USD).
+ * Format a number as currency (default: EUR).
  * Compact for values >= 1 million.
  */
-export function formatCurrency(value: number, currency = 'USD', compact = true): string {
+export function formatCurrency(value: number, currency = 'EUR', compact = true): string {
   if (compact && Math.abs(value) >= 1_000_000) {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',

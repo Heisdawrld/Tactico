@@ -725,8 +725,8 @@ export class MatchRenderer {
       const current = (sprite as any).currentPosition;
 
       if (target && current) {
-        current.x += (target.x - current.x) * PLAYER_CONFIG.playerMoveSpeed;
-        current.y += (target.y - current.y) * PLAYER_CONFIG.playerMoveSpeed;
+        current.x += (target.x - current.x) * ANIMATION_CONFIG.playerMoveSpeed;
+        current.y += (target.y - current.y) * ANIMATION_CONFIG.playerMoveSpeed;
 
         sprite.x = current.x;
         sprite.y = current.y;

@@ -1,6 +1,5 @@
 'use client'
 
-export const dynamic = 'force-dynamic';
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
