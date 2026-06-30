@@ -510,56 +510,56 @@ export class WorldEngine {
         const attributeChanges: Partial<any> = {};
         
         // Technical attributes
-        if (player.attributes.passing < 100) {
+        if (player.attributes?.passing < 100) {
           attributeChanges.passing = Math.min(
             100,
-            player.attributes.passing + trainingEffect.technical
+            player.attributes?.passing + trainingEffect.technical
           );
         }
-        if (player.attributes.shooting < 100) {
+        if (player.attributes?.shooting < 100) {
           attributeChanges.shooting = Math.min(
             100,
-            player.attributes.shooting + trainingEffect.technical * 0.8
+            player.attributes?.shooting + trainingEffect.technical * 0.8
           );
         }
-        if (player.attributes.dribbling < 100) {
+        if (player.attributes?.dribbling < 100) {
           attributeChanges.dribbling = Math.min(
             100,
-            player.attributes.dribbling + trainingEffect.technical
+            player.attributes?.dribbling + trainingEffect.technical
           );
         }
         
         // Physical attributes
-        if (player.attributes.pace < 100) {
+        if (player.attributes?.pace < 100) {
           attributeChanges.pace = Math.min(
             100,
-            player.attributes.pace + trainingEffect.physical
+            player.attributes?.pace + trainingEffect.physical
           );
         }
-        if (player.attributes.stamina < 100) {
+        if (player.attributes?.stamina < 100) {
           attributeChanges.stamina = Math.min(
             100,
-            player.attributes.stamina + trainingEffect.physical * 1.2
+            player.attributes?.stamina + trainingEffect.physical * 1.2
           );
         }
-        if (player.attributes.strength < 100) {
+        if (player.attributes?.strength < 100) {
           attributeChanges.strength = Math.min(
             100,
-            player.attributes.strength + trainingEffect.physical * 0.8
+            player.attributes?.strength + trainingEffect.physical * 0.8
           );
         }
         
         // Mental attributes
-        if (player.attributes.decisions < 100) {
+        if (player.attributes?.decisions < 100) {
           attributeChanges.decisions = Math.min(
             100,
-            player.attributes.decisions + trainingEffect.mental
+            player.attributes?.decisions + trainingEffect.mental
           );
         }
-        if (player.attributes.vision < 100) {
+        if (player.attributes?.vision < 100) {
           attributeChanges.vision = Math.min(
             100,
-            player.attributes.vision + trainingEffect.mental * 1.2
+            player.attributes?.vision + trainingEffect.mental * 1.2
           );
         }
         
@@ -598,7 +598,7 @@ export class WorldEngine {
     const potentialModifier = player.potentialAbility / 100;
     
     // Modify by player professionalism (hidden attribute)
-    const proModifier = player.hiddenAttributes.professionalism / 100;
+    const proModifier = player.hiddenAttributes?.professionalism / 100;
     
     // Calculate total modifier
     const totalModifier = facilityModifier * ageModifier * potentialModifier * proModifier;
@@ -713,7 +713,7 @@ export class WorldEngine {
     this.players.forEach(player => {
       if (player.fatigue > 0) {
         // Recover fatigue based on natural fitness
-        const recoveryRate = player.hiddenAttributes.naturalFitness / 100;
+        const recoveryRate = player.hiddenAttributes?.naturalFitness / 100;
         const fatigueReduction = Math.min(player.fatigue, recoveryRate * 10);
         
         changes.players.push({
@@ -863,7 +863,7 @@ export class WorldEngine {
     const positionModifier = this.getInjuryModifierByPosition(player.position);
     
     // Modify by injury proneness
-    const pronenessModifier = player.hiddenAttributes.injuryProneness / 50;
+    const pronenessModifier = player.hiddenAttributes?.injuryProneness / 50;
     
     // Modify by age
     const ageModifier = this.getInjuryAgeModifier(player.age);
@@ -872,7 +872,7 @@ export class WorldEngine {
     const fatigueModifier = 1 + (player.fatigue / 100);
     
     // Modify by natural fitness
-    const fitnessModifier = 1 - (player.hiddenAttributes.naturalFitness / 200);
+    const fitnessModifier = 1 - (player.hiddenAttributes?.naturalFitness / 200);
     
     return baseProbability * 
            positionModifier * 
@@ -1083,7 +1083,7 @@ export class WorldEngine {
     development *= (100 - player.currentAbility) / 100;
     
     // Modify by professionalism
-    development *= player.hiddenAttributes.professionalism / 100;
+    development *= player.hiddenAttributes?.professionalism / 100;
     
     // Modify by training (would be based on actual training in a real implementation)
     development *= 1.0; // Placeholder

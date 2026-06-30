@@ -28,6 +28,7 @@ import {
   MIN_WEEKLY_IMPROVEMENT,
   FACILITY_QUALITY_EFFECTS,
   COACHING_ABILITY_EFFECTS,
+  getCoachingEffect,
 } from './types';
 
 /**
@@ -195,7 +196,7 @@ export class TrainingEngine {
     facilityEffect: number,
     coachingEffect: number
   ): TrainingEffect {
-    const currentValue = player.attributes[focusArea as keyof typeof player.attributes] || 50;
+    const currentValue = player.attributes?.[focusArea as keyof typeof player.attributes] || 50;
     
     // Don't improve if already at max
     if (currentValue >= 100) {
@@ -217,10 +218,10 @@ export class TrainingEngine {
     improvement *= (100 - currentValue) / 100;
 
     // Apply professionalism modifier
-    improvement *= player.hiddenAttributes.professionalism / 100;
+    improvement *= player.hiddenAttributes?.professionalism / 100;
 
     // Apply consistency modifier
-    improvement *= player.hiddenAttributes.consistency / 100;
+    improvement *= player.hiddenAttributes?.consistency / 100;
 
     // Apply random variation (±20%)
     improvement *= 0.8 + Math.random() * 0.4;
@@ -281,7 +282,7 @@ export class TrainingEngine {
 
     // Calculate average coaching ability
     const avgAbility = staff.reduce((sum, s) => sum + s.coachingAbility, 0) / staff.length;
-    return COACHING_ABILITY_EFFECTS[Math.round(avgAbility)] || 1.0;
+    return getCoachingEffect(avgAbility);
   }
 
   /**
@@ -363,10 +364,10 @@ export class TrainingEngine {
       if (!player) return;
 
       const attribute = effect.attribute as keyof typeof player.attributes;
-      if (player.attributes[attribute] !== undefined) {
-        player.attributes[attribute] = Math.min(
+      if (player.attributes?.[attribute] !== undefined) {
+        player.attributes?.[attribute] = Math.min(
           100,
-          player.attributes[attribute] + effect.improvement
+          player.attributes?.[attribute] + effect.improvement
         );
       }
 
@@ -385,7 +386,7 @@ export class TrainingEngine {
     let weightSum = 0;
 
     for (const [attribute, weight] of Object.entries(positionWeights)) {
-      const attrValue = player.attributes[attribute as keyof typeof player.attributes] || 50;
+      const attrValue = player.attributes?.[attribute as keyof typeof player.attributes] || 50;
       total += attrValue * weight;
       weightSum += weight;
     }

@@ -7,8 +7,8 @@ import {
   TransferOffer,
   NegotiationState,
   NegotiationHistory,
-  Player,
-  Club,
+  TransferPlayer as Player,
+  TransferClub as Club,
   TransferStatus,
 } from '../types';
 
@@ -69,10 +69,10 @@ export class NegotiationEngine {
     const state = this.state.get(offerId);
     if (!state) throw new Error(`Negotiation ${offerId} not found`);
 
-    const wageIncrease = ((wageOffer - player.wage) / player.wage) * 100;
+    const wageIncrease = player.wage > 0 ? ((wageOffer - player.wage) / player.wage) * 100 : 50;
     const interestChange = this.calculatePlayerInterestChange(player, wageIncrease);
 
-    this.addHistory(state, 'PLAYER', 'WAGE_RESPONSE', `Wage offer: €${wageOffer.toLocaleString()/1000}k/week (${wageIncrease > 0 ? '+' : ''}${wageIncrease.toFixed(1)}%)`);
+    this.addHistory(state, 'PLAYER', 'WAGE_RESPONSE', `Wage offer: €${(wageOffer / 1000).toFixed(0)}k/week (${wageIncrease > 0 ? '+' : ''}${wageIncrease.toFixed(1)}%)`);
 
     state.currentStep++;
     state.playerInterest = Math.max(0, Math.min(100, state.playerInterest + interestChange));
@@ -181,8 +181,11 @@ export class NegotiationEngine {
     player: Player,
     wageIncreasePercent: number
   ): number {
-    const ambitionFactor = player.ambition / 10;
-    const loyaltyPenalty = player.loyalty / 20;
+    // Use personality traits if available, otherwise use defaults
+    const ambition = player.ambition ?? player.personality?.ambition ?? 50;
+    const loyalty = player.loyalty ?? player.personality?.loyalty ?? 50;
+    const ambitionFactor = ambition / 10;
+    const loyaltyPenalty = loyalty / 20;
     
     if (wageIncreasePercent > 50) return 30 * ambitionFactor;
     if (wageIncreasePercent > 20) return 15 * ambitionFactor;

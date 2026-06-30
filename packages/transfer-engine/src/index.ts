@@ -9,8 +9,8 @@ export * from './types';
 
 // Re-export commonly used types
 export type {
-  Player,
-  Club,
+  TransferPlayer,
+  TransferClub,
   TransferOffer,
   TransferStatus,
   NegotiationState,

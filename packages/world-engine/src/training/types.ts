@@ -229,12 +229,21 @@ export const FACILITY_QUALITY_EFFECTS: Record<number, number> = {
   5: 1.5,  // Excellent
 };
 
-/** Coaching ability effects */
+/** Coaching ability effects — interpolated from ability rating (1-100) */
 export const COACHING_ABILITY_EFFECTS: Record<number, number> = {
   1: 0.5,   // Very poor
   50: 1.0,  // Average
   100: 1.5, // Excellent
 };
+
+/** Get coaching effect multiplier for a given ability rating (interpolated) */
+export function getCoachingEffect(ability: number): number {
+  const clamped = Math.max(1, Math.min(100, Math.round(ability)));
+  if (clamped <= 50) {
+    return 0.5 + (clamped - 1) * (0.5 / 49); // Linear 0.5 → 1.0
+  }
+  return 1.0 + (clamped - 50) * (0.5 / 50); // Linear 1.0 → 1.5
+}
 
 // ============================================
 // PLAYER DEVELOPMENT TYPES
