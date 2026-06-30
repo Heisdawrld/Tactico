@@ -747,9 +747,6 @@ img, video {
   .shadow-gold { box-shadow: var(--shadow-gold-glow); }
   .shadow-gold-strong { box-shadow: var(--shadow-gold-glow-strong); }
 
-  /* ---------- GLASS UTILITIES ---------- */
-  .glass { background: var(--glass-bg); backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%); border: 1px solid var(--glass-border); }
-
   /* ---------- FONT UTILITIES ---------- */
   .font-display { font-family: var(--font-display); }
   .font-body { font-family: var(--font-body); }

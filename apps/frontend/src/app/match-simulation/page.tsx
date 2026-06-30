@@ -36,6 +36,10 @@ export default function MatchSimulationPage() {
   const [homeScore, setHomeScore] = useState(0);
   const [awayScore, setAwayScore] = useState(0);
   const [possession, setPossession] = useState({ home: 50, away: 50 });
+  // Refs to avoid stale closures in setInterval
+  const homeScoreRef = useRef(0);
+  const awayScoreRef = useRef(0);
+  const matchRecordedRef = useRef(false);
 
   const store = useAppStore();
   const selectedClubId = store.selectedClubId;
@@ -145,9 +149,9 @@ export default function MatchSimulationPage() {
       if (event.type === 'goal') {
         const isHomeGoal = event.teamId === currentFixture.homeClubId;
         if (isHomeGoal) {
-          setHomeScore(s => s + 1);
+          setHomeScore(s => { homeScoreRef.current = s + 1; return s + 1; });
         } else {
-          setAwayScore(s => s + 1);
+          setAwayScore(s => { awayScoreRef.current = s + 1; return s + 1; });
         }
         playSfx('goal');
       }
@@ -180,14 +184,15 @@ export default function MatchSimulationPage() {
           setIsPaused(true);
           playSfx('whistle');
         }
-        if (state.isFullTime) {
+        if (state.isFullTime && !matchRecordedRef.current) {
           setIsPlaying(false);
           setIsPaused(false);
           playSfx('whistle');
 
-          // Record result
+          // Record result using ref values (not stale closure)
           if (currentFixture) {
-            store.recordMatchResult(currentFixture.id, homeScore, awayScore);
+            matchRecordedRef.current = true;
+            store.recordMatchResult(currentFixture.id, homeScoreRef.current, awayScoreRef.current);
           }
         }
       }
@@ -196,7 +201,7 @@ export default function MatchSimulationPage() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isPlaying, isPaused, homeScore, awayScore, currentFixture]);
+  }, [isPlaying, isPaused, currentFixture]);
 
   // Speed control
   useEffect(() => {
@@ -214,6 +219,9 @@ export default function MatchSimulationPage() {
       setIsPaused(false);
       setIsPlaying(true);
     } else if (!isPlaying) {
+      matchRecordedRef.current = false;
+      homeScoreRef.current = 0;
+      awayScoreRef.current = 0;
       engineRef.current.start();
       setIsPlaying(true);
       setIsPaused(false);

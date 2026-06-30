@@ -101,17 +101,16 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 // Higher-order component version
-export function withErrorBoundary(
-  Component: React.ComponentType<any>,
+export function withErrorBoundary<T extends object>(
+  WrappedComponent: React.ComponentType<T>,
   fallback?: ReactNode
 ) {
-  return class extends ErrorBoundary {
-    render() {
-      return (
-        <ErrorBoundary fallback={fallback}>
-          <Component {...this.props} />
-        </ErrorBoundary>
-      );
-    }
-  };
+  const WithErrorBoundary = (props: T) => (
+    <ErrorBoundary fallback={fallback}>
+      <WrappedComponent {...props} />
+    </ErrorBoundary>
+  );
+  WithErrorBoundary.displayName = `withErrorBoundary(${WrappedComponent.displayName || WrappedComponent.name || 'Component'})`;
+  return WithErrorBoundary;
+}
 }

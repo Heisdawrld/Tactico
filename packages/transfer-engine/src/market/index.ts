@@ -4,8 +4,8 @@
  */
 
 import {
-  Player,
-  Club,
+  TransferPlayer as Player,
+  TransferClub as Club,
   TransferOffer,
   MarketAnalysis,
   PriceTrend,
@@ -72,7 +72,7 @@ export class MarketEngine {
 
     const offerAmount = Math.round(marketValue * offerPercentage);
     const wageOffer = this.calculateWageOffer(player, buyingClub);
-    const contractLength = this.determineContractLength(player.age, player.potentialAbility);
+    const contractLength = this.determineContractLength(player.age, player.potentialRating);
 
     return {
       id: this.generateOfferId(),
@@ -156,8 +156,8 @@ export class MarketEngine {
   // Private helper methods
 
   private calculateBaseValue(player: Player): number {
-    const abilityBase = player.currentAbility * 100000;
-    const potentialBonus = (player.potentialAbility - player.currentAbility) * 50000;
+    const abilityBase = player.overallRating * 100000;
+    const potentialBonus = (player.potentialRating - player.overallRating) * 50000;
     const ageAdjustment = Math.max(0.5, 1 - (Math.abs(player.age - 27) * 0.02)); // Peak at 27
     
     return (abilityBase + potentialBonus) * ageAdjustment;
@@ -172,7 +172,7 @@ export class MarketEngine {
   }
 
   private getPotentialMultiplier(player: Player): number {
-    const gap = player.potentialAbility - player.currentAbility;
+    const gap = player.potentialRating - player.overallRating;
     if (gap > 20) return 1.4; // High potential
     if (gap > 10) return 1.2;
     if (gap > 5) return 1.1;
@@ -180,7 +180,8 @@ export class MarketEngine {
   }
 
   private getContractMultiplier(player: Player): number {
-    const yearsLeft = (player.contractExpiry.getTime() - Date.now()) / (365 * 24 * 60 * 60 * 1000);
+    if (!player.contractExpires) return 0.6; // No contract = low value
+    const yearsLeft = (new Date(player.contractExpires).getTime() - Date.now()) / (365 * 24 * 60 * 60 * 1000);
     
     if (yearsLeft > 3) return 1.2;
     if (yearsLeft > 2) return 1.0;
@@ -215,7 +216,7 @@ export class MarketEngine {
 
   private calculateWageOffer(player: Player, buyingClub: Club): number {
     const baseWage = player.wage;
-    const clubBudgetRatio = buyingClub.finances.wageBudget / 1000000;
+    const clubBudgetRatio = buyingClub.wageBudget / 1000000;
     
     // Offer based on club's financial power and player's current wage
     const wageIncrease = Math.min(50, clubBudgetRatio * 20);

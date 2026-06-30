@@ -7,9 +7,11 @@ import { db, getDbClient } from '@tactico/database';
 import bcrypt from 'bcryptjs';
 import { SignJWT, jwtVerify } from 'jose';
 
-// JWT Secret (should be in environment variables)
+// JWT Secret — MUST be set via environment variable in production
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'tactico-dev-secret-change-in-production'
+  process.env.JWT_SECRET || (process.env.NODE_ENV === 'production'
+    ? (() => { throw new Error('JWT_SECRET environment variable is required in production'); })()
+    : 'tactico-dev-secret-change-in-production')
 );
 
 export interface User {

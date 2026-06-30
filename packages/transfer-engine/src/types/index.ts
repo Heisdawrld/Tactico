@@ -1,24 +1,35 @@
 /**
  * Transfer Engine Types
  * Core type definitions for the transfer market system
+ *
+ * Aligned with frontend types in apps/frontend/src/types/player.ts and club.ts
  */
 
-export interface Player {
-  id: string;
+// Re-export frontend types for compatibility
+export type { Player } from '../../../../apps/frontend/src/types/player';
+export type { Club } from '../../../../apps/frontend/src/types/club';
+
+/**
+ * Extended Player type with transfer-specific fields.
+ * Uses frontend Player as base, adds personality traits.
+ */
+export interface TransferPlayer {
+  id: number;
   firstName: string;
   lastName: string;
   age: number;
   nationality: string;
   position: string;
-  currentAbility: number;
-  potentialAbility: number;
+  overallRating: number;
+  potentialRating: number;
   marketValue: number;
   wage: number;
-  contractExpiry: Date;
-  clubId: string | null;
-  personality: Personality;
-  ambition: number;
-  loyalty: number;
+  contractExpires: string | null;
+  clubId: number;
+  // Transfer-specific personality traits (optional)
+  personality?: Personality;
+  ambition?: number;
+  loyalty?: number;
 }
 
 export interface Personality {
@@ -33,13 +44,20 @@ export interface Personality {
   ambition: number;
 }
 
-export interface Club {
-  id: string;
+/**
+ * Extended Club type with transfer-specific fields.
+ * Uses frontend Club as base, adds financial details.
+ */
+export interface TransferClub {
+  id: number;
   name: string;
-  finances: ClubFinances;
   reputation: number;
-  tacticalNeeds: TacticalNeeds;
-  scoutingNetwork: number;
+  balance: number;
+  wageBudget: number;
+  transferBudget: number;
+  // Transfer-specific fields
+  tacticalNeeds?: TacticalNeeds;
+  scoutingNetwork?: number;
 }
 
 export interface ClubFinances {
@@ -56,9 +74,9 @@ export interface TacticalNeeds {
 
 export interface TransferOffer {
   id: string;
-  playerId: string;
-  fromClubId: string;
-  toClubId: string;
+  playerId: number;
+  fromClubId: number;
+  toClubId: number;
   offerAmount: number;
   wageOffer: number;
   contractLength: number; // years
@@ -95,7 +113,7 @@ export interface NegotiationState {
 
 export interface NegotiationHistory {
   timestamp: Date;
-  actor: 'CLUB' | 'PLAYER' | 'AGENT';
+  actor: 'CLUB' | 'PLAYER' | 'AGENT' | 'BOTH';
   action: string;
   details: string;
 }
@@ -123,7 +141,7 @@ export interface PriceTrend {
 }
 
 export interface ScoutReport {
-  playerId: string;
+  playerId: number;
   scoutAccuracy: number;
   reportedAbility: number;
   reportedPotential: number;
