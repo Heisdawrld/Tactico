@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,444 +14,314 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { RatingBadge, ProgressBar, StatBlock } from '@/components/ui/Stat';
+import { BackButton } from '@/components/ui/BackButton';
+import { PageWrapper } from '@/components/shell/PageWrapper';
 import {
   StaggerContainer, StaggerItem, FadeInOnView,
   AnimatedCounter,
 } from '@/components/ui/motion';
-import {
-  Search, X, Filter, ArrowUpDown, Users, Star, Wallet,
-  TrendingUp, Activity, Shield, Flame, Zap, ChevronRight,
-} from 'lucide-react';
 
-/**
- * Squad Page — premium player roster with Bloomberg-dense data.
- *
- * Features:
- * - Search by name (instant)
- * - Filter by position group (GK / DEF / MID / ATT)
- * - Sort by OVR / POT / Age / Wage / Market Value
- * - Virtualized-friendly table layout (current: limit 60 visible)
- * - Player cards with FIFA-style 6-stat radar (PAC/SHO/PAS/DRI/DEF/PHY)
- * - Squad summary stats at top (squad size, avg rating, total wages, market value)
- */
+// Position groups for organizing the squad
+const POSITION_GROUPS: { id: string; label: string; positions: PlayerPosition[]; color: string }[] = [
+  {
+    id: 'goalkeepers',
+    label: 'Goalkeepers',
+    positions: ['GK'],
+    color: 'text-emerald-400',
+  },
+  {
+    id: 'defenders',
+    label: 'Defenders',
+    positions: ['CB', 'RB', 'LB', 'RWB', 'LWB', 'RCB', 'LCB'],
+    color: 'text-blue-400',
+  },
+  {
+    id: 'midfielders',
+    label: 'Midfielders',
+    positions: ['CDM', 'CM', 'CAM', 'RM', 'LM', 'RDM', 'LDM', 'RCM', 'LCM', 'AMC', 'AMR', 'AML'],
+    color: 'text-amber-400',
+  },
+  {
+    id: 'forwards',
+    label: 'Forwards',
+    positions: ['ST', 'CF', 'RW', 'LW', 'SS', 'RS', 'LS', 'FWD', 'F'],
+    color: 'text-red-400',
+  },
+];
 
-const POSITION_GROUPS = ['GK', 'DEF', 'MID', 'ATT'] as const;
-type PositionGroup = typeof POSITION_GROUPS[number];
-
-const POSITION_FILTERS: Record<PositionGroup, string[]> = {
-  GK: ['GK', 'G'],
-  DEF: ['CB', 'RB', 'LB', 'RWB', 'LWB', 'D', 'RCB', 'LCB'],
-  MID: ['CDM', 'CM', 'CAM', 'RM', 'LM', 'M', 'MID', 'RDM', 'LDM', 'RCM', 'LCM', 'RAM', 'LAM'],
-  ATT: ['RW', 'LW', 'CF', 'ST', 'SS', 'F', 'FWD', 'RS', 'LS'],
-};
-
-const POSITION_COLORS: Record<PositionGroup, { bg: string; text: string; border: string; label: string }> = {
-  GK: { bg: 'bg-yellow-500/15', text: 'text-yellow-400', border: 'border-yellow-500/30', label: 'GK' },
-  DEF: { bg: 'bg-blue-500/15', text: 'text-blue-400', border: 'border-blue-500/30', label: 'DEF' },
-  MID: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30', label: 'MID' },
-  ATT: { bg: 'bg-red-500/15', text: 'text-red-400', border: 'border-red-500/30', label: 'ATT' },
-};
-
-function getPositionGroup(position: string | undefined | null): PositionGroup {
-  if (!position) return 'MID';
-  const p = position.toUpperCase();
+// Get position group for a player
+function getPositionGroup(player: Player): { label: string; color: string } {
   for (const group of POSITION_GROUPS) {
-    if (POSITION_FILTERS[group].includes(p)) return group;
+    if (group.positions.includes(player.position as PlayerPosition)) {
+      return { label: group.label, color: group.color };
+    }
   }
-  return 'MID';
+  return { label: 'Substitutes', color: 'text-gray-400' };
 }
 
-type SortBy = 'overallRating' | 'potentialRating' | 'age' | 'wage' | 'marketValue';
+// Sort players by position group and then by rating
+function sortPlayers(players: Player[]): Player[] {
+  const groupOrder = new Map<string, number>();
+  POSITION_GROUPS.forEach((group, index) => {
+    groupOrder.set(group.id, index);
+  });
 
-export default function SquadPage() {
-  const { club } = useSelectedClub();
-  const [search, setSearch] = useState('');
-  const [positionFilter, setPositionFilter] = useState<PositionGroup | null>(null);
-  const [sortBy, setSortBy] = useState<SortBy>('overallRating');
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  return [...players].sort((a, b) => {
+    const groupA = getPositionGroup(a).label.toLowerCase();
+    const groupB = getPositionGroup(b).label.toLowerCase();
+    
+    const orderA = groupOrder.get(groupA) ?? 999;
+    const orderB = groupOrder.get(groupB) ?? 999;
+    
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+    
+    // Within same group, sort by rating (descending)
+    return b.overallRating - a.overallRating;
+  });
+}
 
-  // Use useMemo like dashboard — no useEffect, no loading state
-  const getSquad = useAppStore((s) => s.getSquad);
+function SquadContent() {
+  const { club, hydrated } = useSelectedClub();
+  const getSquad = useAppStore((state) => state.getSquad);
+  const [selectedGroup, setSelectedGroup] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'rating' | 'name' | 'age'>('rating');
 
-  const players = useMemo(() => {
+  const squad = useMemo(() => {
     if (!club) return [];
-    const squad = getSquad(club.id);
-    return squad.length > 0 ? squad : getOfflineSquad(OFFLINE_CLUBS[0].id);
+    return getSquad(club.id);
   }, [club, getSquad]);
 
-  // ---------- DERIVED DATA ----------
-  const filtered = useMemo(() => {
-    let result = players;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter((p) =>
-        `${p.firstName} ${p.lastName}`.toLowerCase().includes(q) ||
-        (p.fullName || '').toLowerCase().includes(q) ||
-        (p.position || '').toLowerCase().includes(q) ||
-        (p.nationality || '').toLowerCase().includes(q)
+  const sortedSquad = useMemo(() => {
+    const sorted = sortPlayers(squad);
+    
+    // Apply additional sorting
+    if (sortBy === 'name') {
+      return [...sorted].sort((a, b) => a.lastName.localeCompare(b.lastName));
+    }
+    if (sortBy === 'age') {
+      return [...sorted].sort((a, b) => a.age - b.age);
+    }
+    return sorted;
+  }, [squad, sortBy]);
+
+  // Filter by group
+  const filteredSquad = useMemo(() => {
+    if (selectedGroup === 'all') return sortedSquad;
+    const group = POSITION_GROUPS.find(g => g.id === selectedGroup);
+    if (!group) return sortedSquad;
+    return sortedSquad.filter(player => group.positions.includes(player.position as PlayerPosition));
+  }, [sortedSquad, selectedGroup]);
+
+  // Group players by position
+  const groupedPlayers = useMemo(() => {
+    const groups: Record<string, Player[]> = {};
+    POSITION_GROUPS.forEach(group => {
+      groups[group.id] = sortedSquad.filter(player => 
+        group.positions.includes(player.position as PlayerPosition)
       );
-    }
-    if (positionFilter) {
-      result = result.filter((p) => getPositionGroup(p.position) === positionFilter);
-    }
-    return [...result].sort((a, b) => (b[sortBy] || 0) - (a[sortBy] || 0));
-  }, [players, search, positionFilter, sortBy]);
+    });
+    return groups;
+  }, [sortedSquad]);
 
-  const squadStats = useMemo(() => {
-    if (players.length === 0) return null;
-    const avgRating = Math.round(players.reduce((s, p) => s + (p.overallRating || 0), 0) / players.length);
-    const totalWages = players.reduce((s, p) => s + (p.wage || 0), 0);
-    const totalValue = players.reduce((s, p) => s + (p.marketValue || 0), 0);
-    const avgAge = Math.round((players.reduce((s, p) => s + (p.age || 25), 0) / players.length) * 10) / 10;
-    return { avgRating, totalWages, totalValue, avgAge, squadSize: players.length };
-  }, [players]);
+  // Stats
+  const totalPlayers = squad.length;
+  const totalMarketValue = useMemo(() => {
+    return squad.reduce((sum, player) => sum + (player.marketValue || 0), 0);
+  }, [squad]);
+  const averageRating = useMemo(() => {
+    if (squad.length === 0) return 0;
+    return squad.reduce((sum, player) => sum + (player.overallRating || 0), 0) / squad.length;
+  }, [squad]);
+  const averageAge = useMemo(() => {
+    if (squad.length === 0) return 0;
+    return squad.reduce((sum, player) => sum + (player.age || 0), 0) / squad.length;
+  }, [squad]);
 
-  // ---------- NO CLUB SELECTED ----------
-  if (!club) return null;
-
-  // ---------- ERROR / EMPTY ----------
-  if (players.length === 0) {
-    return (
-      <div className="relative z-10">
-        <div className="flex flex-col items-center justify-center h-full p-12 gap-4 text-center">
-          <div className="w-14 h-14 rounded-full bg-warning/15 flex items-center justify-center">
-            <Users className="w-7 h-7 text-warning" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-primary-c">No players found.</p>
-            <p className="text-xs text-tertiary-c">Try refreshing the page.</p>
-          </div>
-          <Button variant="secondary" size="sm" onClick={() => window.location.reload()}>
-            Refresh
-          </Button>
-        </div>
-      </div>
-    );
+  if (!hydrated || !club) {
+    return null;
   }
 
-  // ---------- MAIN RENDER ----------
   return (
-    <div className="relative z-10">
-      <div className="px-6 lg:px-8 py-6 pb-12">
-        {/* ---------- HEADER ---------- */}
-        <StaggerContainer className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6" stagger={0.05}>
-          <StaggerItem>
-            <div className="section-header !mb-1">First Team Squad</div>
-            <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">
-              {squadStats?.squadSize || 0} <span className="text-tertiary-c font-normal text-xl">Players</span>
-            </h1>
-          </StaggerItem>
-          <StaggerItem className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <StatBlock label="AVG OVR" value={<AnimatedCounter value={squadStats?.avgRating || 0} />} tone="gold" size="sm" icon={<Star className="w-3 h-3" />} />
-            <StatBlock label="AVG AGE" value={squadStats?.avgAge || 0} size="sm" icon={<Activity className="w-3 h-3" />} />
-            <StatBlock label="WAGES/YR" value={formatCurrency(squadStats?.totalWages || 0, 'EUR', true)} size="sm" tone="danger" icon={<Wallet className="w-3 h-3" />} />
-            <StatBlock label="SQUAD VALUE" value={formatCurrency(squadStats?.totalValue || 0, 'EUR', true)} size="sm" tone="success" icon={<TrendingUp className="w-3 h-3" />} />
-          </StaggerItem>
-        </StaggerContainer>
+    <div className="space-y-6 p-4 md:p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">Squad Overview</h1>
+          <p className="text-muted-foreground text-sm">
+            {club.name}  {totalPlayers} players
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <BackButton to="/dashboard" />
+        </div>
+      </div>
 
-        {/* ---------- FILTERS ---------- */}
-        <FadeInOnView delay={0.2} className="mb-4 space-y-3">
-          {/* Search + sort */}
-          <div className="flex flex-col md:flex-row gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-tertiary-c" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search players by name, position, or nationality…"
-                className="w-full pl-10 pr-10 py-2 rounded-md bg-surface-2 border border-white/8 text-sm text-primary-c placeholder:text-tertiary-c focus:outline-none focus:border-gold-soft focus:ring-1 focus:ring-gold-soft"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-tertiary-c hover:text-primary-c">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <ArrowUpDown className="w-3.5 h-3.5 text-tertiary-c" />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortBy)}
-                className="bg-surface-2 border border-white/8 rounded px-3 py-2 text-xs text-primary-c focus:outline-none focus:border-gold-soft"
-              >
-                <option value="overallRating">Sort: Overall</option>
-                <option value="potentialRating">Sort: Potential</option>
-                <option value="age">Sort: Age (young first)</option>
-                <option value="wage">Sort: Wage</option>
-                <option value="marketValue">Sort: Market Value</option>
-              </select>
-            </div>
-          </div>
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatBlock
+          label="Total Players"
+          value={totalPlayers}
+          icon={<Users className="w-4 h-4" />}
+        />
+        <StatBlock
+          label="Avg Rating"
+          value={averageRating.toFixed(1)}
+          icon={<Star className="w-4 h-4" />}
+        />
+        <StatBlock
+          label="Avg Age"
+          value={averageAge.toFixed(1)}
+          icon={<Calendar className="w-4 h-4" />}
+        />
+        <StatBlock
+          label="Squad Value"
+          value={formatCurrency(totalMarketValue)}
+          icon={<DollarSign className="w-4 h-4" />}
+        />
+      </div>
 
-          {/* Position filter chips */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Filter className="w-3 h-3 text-tertiary-c" />
-            <button
-              onClick={() => setPositionFilter(null)}
-              className={cn(
-                'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors',
-                positionFilter === null
-                  ? 'bg-gold-soft text-gold-300 border border-gold-soft'
-                  : 'bg-surface-2 text-tertiary-c hover:text-primary-c border border-white/5'
-              )}
+      {/* Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground mr-2">Filter:</span>
+            <Button
+              variant={selectedGroup === 'all' ? 'gold' : 'outline'}
+              size="sm"
+              onClick={() => setSelectedGroup('all')}
             >
-              All ({players.length})
-            </button>
-            {POSITION_GROUPS.map((g) => {
-              const count = players.filter((p) => getPositionGroup(p.position) === g).length;
-              const colors = POSITION_COLORS[g];
-              return (
-                <button
-                  key={g}
-                  onClick={() => setPositionFilter(positionFilter === g ? null : g)}
-                  className={cn(
-                    'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors border',
-                    positionFilter === g
-                      ? `${colors.bg} ${colors.text} ${colors.border}`
-                      : 'bg-surface-2 text-tertiary-c hover:text-primary-c border-white/5'
-                  )}
-                >
-                  {colors.label} ({count})
-                </button>
-              );
-            })}
+              All Players
+            </Button>
+            {POSITION_GROUPS.map((group) => (
+              <Button
+                key={group.id}
+                variant={selectedGroup === group.id ? 'gold' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedGroup(group.id)}
+              >
+                {group.label}
+              </Button>
+            ))}
           </div>
-        </FadeInOnView>
+          <div className="mt-4 flex items-center gap-2">
+            <span className="text-sm text-muted-foreground mr-2">Sort by:</span>
+            <Button
+              variant={sortBy === 'rating' ? 'gold' : 'outline'}
+              size="sm"
+              onClick={() => setSortBy('rating')}
+            >
+              Rating
+            </Button>
+            <Button
+              variant={sortBy === 'name' ? 'gold' : 'outline'}
+              size="sm"
+              onClick={() => setSortBy('name')}
+            >
+              Name
+            </Button>
+            <Button
+              variant={sortBy === 'age' ? 'gold' : 'outline'}
+              size="sm"
+              onClick={() => setSortBy('age')}
+            >
+              Age
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* ---------- PLAYER TABLE ---------- */}
+      {/* Position Groups */}
+      <StaggerContainer>
+        {POSITION_GROUPS.map((group) => {
+          const players = groupedPlayers[group.id] || [];
+          if (players.length === 0 && selectedGroup !== 'all') return null;
+          
+          return (
+            <StaggerItem key={group.id}>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <CardTitle className={cn('text-lg', group.color)}>
+                      {group.label}
+                    </CardTitle>
+                    <Badge variant="outline" className="text-xs">
+                      {players.length} players
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {players.length > 0 ? (
+                    <div className="space-y-3">
+                      {players.map((player) => (
+                        <FadeInOnView key={player.id}>
+                          <div className="flex items-center justify-between p-3 rounded-lg bg-surface-2/50 hover:bg-surface-3 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center font-bold text-sm">
+                                {player.overallRating}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-medium text-sm truncate">
+                                  {player.fullName || `${player.firstName} ${player.lastName}`}
+                                </div>
+                                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                                  <span>{player.position}</span>
+                                  <span className="text-quaternary-c"></span>
+                                  <span>{player.age} years</span>
+                                  <span className="text-quaternary-c"></span>
+                                  <span className={cn(player.foot === 'LEFT' ? 'text-blue-400' : player.foot === 'RIGHT' ? 'text-green-400' : 'text-gray-400')}>
+                                    {player.foot}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <RatingBadge value={player.potentialAbility || player.overallRating} max={99} size="sm" label="Potential" />
+                              <span className="text-sm font-medium text-muted-foreground">
+                                {formatCurrency(player.marketValue || 0)}
+                              </span>
+                            </div>
+                          </div>
+                        </FadeInOnView>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No {group.label.toLowerCase()} in squad
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </StaggerItem>
+          );
+        })}
+      </StaggerContainer>
+
+      {filteredSquad.length === 0 && selectedGroup !== 'all' && (
         <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-gold-300" />
-              <CardTitle>Roster</CardTitle>
-              <CardDescription>{filtered.length} players</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="!p-0">
-            {/* Table header (desktop) */}
-            <div className="hidden md:grid grid-cols-[40px_1fr_60px_60px_50px_50px_50px_50px_50px_50px_70px] gap-2 px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-tertiary-c border-b border-white/5">
-              <div>#</div>
-              <div>Player</div>
-              <div>POS</div>
-              <div>AGE</div>
-              <div className="text-center">PAC</div>
-              <div className="text-center">SHO</div>
-              <div className="text-center">PAS</div>
-              <div className="text-center">DRI</div>
-              <div className="text-center">DEF</div>
-              <div className="text-center">PHY</div>
-              <div className="text-right">VALUE</div>
-            </div>
-            {/* Rows */}
-            <div className="divide-y divide-white/3 max-h-[60vh] overflow-y-auto scroll-region">
-              <AnimatePresence>
-                {filtered.slice(0, 60).map((player, idx) => {
-                  const group = getPositionGroup(player.position);
-                  const colors = POSITION_COLORS[group];
-                  return (
-                    <motion.button
-                      key={player.id}
-                      layout
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2, delay: Math.min(idx * 0.01, 0.4) }}
-                      onClick={() => { setSelectedPlayer(player); playSfx('click'); }}
-                      className="w-full text-left grid grid-cols-[40px_1fr_60px_60px_50px_50px_50px_50px_50px_50px_70px] gap-2 px-4 py-2.5 items-center hover:bg-gold-soft/30 transition-colors group"
-                    >
-                      <div className="text-[10px] font-mono text-tertiary-c text-center">
-                        {player.shirtNumber || idx + 1}
-                      </div>
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-surface-3 to-surface-4 flex items-center justify-center text-[10px] font-bold text-secondary-c shrink-0">
-                          {player.firstName?.[0]}{player.lastName?.[0]}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-medium text-sm text-primary-c text-truncate-1 group-hover:text-gold-200 transition-colors">
-                            {player.firstName} {player.lastName}
-                          </div>
-                          <div className="text-[10px] text-tertiary-c font-mono tracking-wide flex items-center gap-1.5">
-                            <span>{player.nationality || '—'}</span>
-                            {player.foot && <><span className="text-quaternary-c">·</span><span>{player.foot === 'L' ? 'Left' : player.foot === 'R' ? 'Right' : 'Both'}</span></>}
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <span className={cn('inline-block px-1.5 py-0.5 rounded text-[9px] font-mono font-bold tracking-wider', colors.bg, colors.text)}>
-                          {player.position || '—'}
-                        </span>
-                      </div>
-                      <div className="text-sm text-secondary-c font-mono tabular-nums">{player.age}</div>
-                      <Stat6 value={player.pace} />
-                      <Stat6 value={player.shooting} />
-                      <Stat6 value={player.passing} />
-                      <Stat6 value={player.dribbling} />
-                      <Stat6 value={player.defending} />
-                      <Stat6 value={player.physicality} />
-                      <div className="text-right">
-                        <div className="text-[10px] font-mono text-success tabular-nums">
-                          {player.marketValue ? formatCurrency(player.marketValue, 'EUR', true) : '—'}
-                        </div>
-                      </div>
-                    </motion.button>
-                  );
-                })}
-              </AnimatePresence>
-            </div>
+          <CardContent className="text-center py-12">
+            <p className="text-muted-foreground">No players found in this category</p>
+            <Button onClick={() => setSelectedGroup('all')} className="mt-4">
+              Show All Players
+            </Button>
           </CardContent>
         </Card>
-
-        {/* ---------- PLAYER DETAIL DRAWER ---------- */}
-        <AnimatePresence>
-          {selectedPlayer && (
-            <PlayerDetailDrawer player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
-          )}
-        </AnimatePresence>
-      </div>
+      )}
     </div>
   );
 }
 
-/* ============================================================
-   LOCAL COMPONENTS
-   ============================================================ */
+// Import additional icons
+import { Users, Star, Calendar, DollarSign } from 'lucide-react';
 
-function Stat6({ value }: { value: number | undefined }) {
-  if (!value) return <div className="text-center text-quaternary-c font-mono text-xs">—</div>;
-  const color = value >= 85 ? 'text-success' : value >= 75 ? 'text-primary-c' : value >= 65 ? 'text-warning' : 'text-danger';
-  return <div className={cn('text-center text-xs font-mono font-semibold tabular-nums', color)}>{value}</div>;
-}
-
-function PlayerDetailDrawer({ player, onClose }: { player: Player; onClose: () => void }) {
-  const group = getPositionGroup(player.position);
-  const colors = POSITION_COLORS[group];
-
+/**
+ * Squad Page - View and manage your team's players
+ */
+export default function SquadPage() {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-modal flex justify-end"
-      onClick={onClose}
-    >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-      <motion.div
-        initial={{ x: '100%' }}
-        animate={{ x: 0 }}
-        exit={{ x: '100%' }}
-        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="relative w-full max-w-md h-full glass-heavy border-l border-white/8 overflow-y-auto scroll-region"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="sticky top-0 z-10 glass-heavy border-b border-white/5 px-5 py-4 flex items-center justify-between">
-          <div className="section-header !mb-0">Player Details</div>
-          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-white/5 text-tertiary-c hover:text-primary-c">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="p-5 space-y-5">
-          {/* Player identity */}
-          <div className="flex items-start gap-4">
-            <div
-              className="w-20 h-20 rounded-xl flex items-center justify-center text-2xl font-headline font-black shrink-0"
-              style={{
-                background: `linear-gradient(135deg, var(--gold-300), var(--gold-500))`,
-                color: 'var(--text-inverse)',
-              }}
-            >
-              {player.firstName?.[0]}{player.lastName?.[0]}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-headline text-xl font-bold tracking-tight text-primary-c text-truncate-1">
-                {player.firstName} {player.lastName}
-              </h2>
-              <div className="flex items-center gap-2 mt-1">
-                <span className={cn('inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold', colors.bg, colors.text)}>
-                  {player.position || '—'}
-                </span>
-                <span className="text-[11px] text-tertiary-c font-mono">AGE {player.age}</span>
-                <span className="text-[11px] text-tertiary-c font-mono">{player.nationality}</span>
-              </div>
-            </div>
-            <RatingBadge rating={player.overallRating || 0} size="lg" />
-          </div>
-
-          {/* Quick stats grid */}
-          <div className="grid grid-cols-2 gap-2">
-            <StatBlock label="POTENTIAL" value={player.potentialRating || '—'} tone="gold" size="sm" />
-            <StatBlock label="MARKET VALUE" value={player.marketValue ? formatCurrency(player.marketValue, 'EUR', true) : '—'} tone="success" size="sm" />
-            <StatBlock label="WAGE/YR" value={player.wage ? formatCurrency(player.wage, 'EUR', true) : '—'} tone="danger" size="sm" />
-            <StatBlock label="MORALE" value={`${player.morale || 0}/100`} size="sm" />
-          </div>
-
-          {/* FIFA-style 6-stat breakdown */}
-          <div>
-            <div className="section-header">Attributes</div>
-            <div className="grid grid-cols-2 gap-2">
-              <AttributeBar icon={<Zap className="w-3 h-3" />} label="PACE" value={player.pace} />
-              <AttributeBar icon={<Flame className="w-3 h-3" />} label="SHOOTING" value={player.shooting} />
-              <AttributeBar icon={<Activity className="w-3 h-3" />} label="PASSING" value={player.passing} />
-              <AttributeBar icon={<TrendingUp className="w-3 h-3" />} label="DRIBBLING" value={player.dribbling} />
-              <AttributeBar icon={<Shield className="w-3 h-3" />} label="DEFENDING" value={player.defending} />
-              <AttributeBar icon={<Star className="w-3 h-3" />} label="PHYSICAL" value={player.physicality} />
-            </div>
-          </div>
-
-          {/* Contract + status */}
-          <div>
-            <div className="section-header">Contract & Status</div>
-            <div className="space-y-2 text-xs">
-              <DetailRow label="CLUB" value={player.clubName || '—'} />
-              <DetailRow label="SHIRT NUMBER" value={player.shirtNumber ? `#${player.shirtNumber}` : '—'} />
-              <DetailRow label="PREFERRED FOOT" value={player.foot === 'L' ? 'Left' : player.foot === 'R' ? 'Right' : player.foot === 'B' ? 'Both' : '—'} />
-              <DetailRow label="HEIGHT" value={player.height ? `${player.height} cm` : '—'} />
-              <DetailRow label="WEIGHT" value={player.weight ? `${player.weight} kg` : '—'} />
-              <DetailRow label="CONTRACT EXPIRES" value={player.contractExpires || '—'} />
-              <DetailRow label="INJURY STATUS" value={player.injuryStatus === 'fit' ? 'Fit' : 'Injured'} />
-            </div>
-          </div>
-
-          {/* Season stats */}
-          <div>
-            <div className="section-header">Season Stats</div>
-            <div className="grid grid-cols-4 gap-2">
-              <StatBlock label="APP" value={player.appearances || 0} size="sm" />
-              <StatBlock label="GOALS" value={player.goals || 0} size="sm" tone="gold" />
-              <StatBlock label="ASSISTS" value={player.assists || 0} size="sm" tone="success" />
-              <StatBlock label="AVG RATING" value={player.averageRating ? player.averageRating.toFixed(1) : '—'} size="sm" />
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-function AttributeBar({ icon, label, value }: { icon: React.ReactNode; label: string; value: number | undefined }) {
-  if (!value) return null;
-  const tone = value >= 85 ? 'success' : value >= 75 ? 'gold' : value >= 65 ? 'warning' : 'danger';
-  return (
-    <div className="p-2 rounded-md bg-surface-2/60 border border-white/3">
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-1.5 text-tertiary-c">
-          <span className="text-gold-300">{icon}</span>
-          <span className="text-[10px] font-mono uppercase tracking-widest font-bold">{label}</span>
-        </div>
-        <span className="text-sm font-mono font-bold tabular-nums text-primary-c">{value}</span>
-      </div>
-      <ProgressBar value={value} tone={tone as any} />
-    </div>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between py-1.5 border-b border-white/3 last:border-0">
-      <span className="text-[10px] font-mono uppercase tracking-widest text-tertiary-c font-bold">{label}</span>
-      <span className="text-xs text-primary-c font-medium">{value}</span>
-    </div>
+    <PageWrapper requireClub={true} loadingMessage="Loading squad...">
+      <SquadContent />
+    </PageWrapper>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
 import { playSfx } from '@/lib/audio';
@@ -8,6 +9,7 @@ import { cn, formatCurrency } from '@/lib/utils';
 import { getOfflineClub } from '@/lib/game-data';
 import {
   ChevronRight,
+  ChevronLeft,
   Bell,
   Volume2,
   VolumeX,
@@ -16,18 +18,28 @@ import {
   PanelRightOpen,
   Calendar,
   Wallet,
+  Home,
 } from 'lucide-react';
 
+interface BreadcrumbItem {
+  name: string;
+  href: string;
+}
+
+interface TopBarProps {
+  breadcrumbs?: BreadcrumbItem[];
+}
+
 /**
- * TopBar — contextual header.
+ * TopBar  contextual header.
  *
- * Layout (left → right):
- *   [breadcrumb] · [club crest + name] · [season · week] · [balance · wage · transfer]
+ * Layout (left  right):
+ *   [breadcrumb]  [club crest + name]  [season  week]  [balance  wage  transfer]
  *                          [search] [audio] [bell] [right-panel toggle]
  *
- * On mobile: collapses to [club crest + name] · [audio] [bell].
+ * On mobile: collapses to [club crest + name]  [audio] [bell].
  */
-export function TopBar() {
+export function TopBar({ breadcrumbs = [] }: TopBarProps) {
   const currentSeason = useAppStore((s) => s.currentSeason);
   const currentWeek = useAppStore((s) => s.currentWeek);
   const audioEnabled = useAppStore((s) => s.audioEnabled);
@@ -39,7 +51,7 @@ export function TopBar() {
   const [hasNotifications, setHasNotifications] = useState(true);
   const [now, setNow] = useState<Date | null>(null);
 
-  // Use offline data — instant, no API calls
+  // Use offline data  instant, no API calls
   const club = useMemo(() => {
     if (!selectedClubId) return null;
     const c = getOfflineClub(selectedClubId);
@@ -72,6 +84,34 @@ export function TopBar() {
     >
       {/* ---------- LEFT: Breadcrumb + Club identity ---------- */}
       <div className="flex items-center gap-3 min-w-0 flex-1">
+        {/* Breadcrumb navigation */}
+        {breadcrumbs.length > 0 && (
+          <div className="hidden sm:flex items-center gap-1 text-xs text-tertiary-c">
+            <Link
+              href="/dashboard"
+              className="p-1 rounded hover:bg-white/5 transition-colors"
+              title="Go to Dashboard"
+            >
+              <Home className="w-3 h-3" />
+            </Link>
+            {breadcrumbs.map((crumb, index) => (
+              <span key={crumb.href} className="flex items-center gap-1">
+                <ChevronRight className="w-3 h-3" />
+                {index === breadcrumbs.length - 1 ? (
+                  <span className="text-primary-c font-medium">{crumb.name}</span>
+                ) : (
+                  <Link
+                    href={crumb.href}
+                    className="hover:text-primary-c transition-colors"
+                  >
+                    {crumb.name}
+                  </Link>
+                )}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Club crest (circular, uses club primary color) */}
         <div
           className="w-9 h-9 rounded-full shrink-0 flex items-center justify-center font-headline font-bold text-sm text-black shadow-md"
@@ -99,7 +139,7 @@ export function TopBar() {
             </span>
             {now && (
               <>
-                <span className="text-quaternary-c hidden sm:inline">·</span>
+                <span className="text-quaternary-c hidden sm:inline"></span>
                 <span className="hidden sm:inline">
                   {now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                 </span>
@@ -109,7 +149,7 @@ export function TopBar() {
         </div>
       </div>
 
-      {/* ---------- CENTER: Finance snapshot (Bloomberg-dense) — desktop only ---------- */}
+      {/* ---------- CENTER: Finance snapshot (Bloomberg-dense)  desktop only ---------- */}
       <div className="hidden lg:flex items-center gap-1 px-2">
         <FinanceStat
           icon={<Wallet className="w-3 h-3" />}
@@ -138,7 +178,7 @@ export function TopBar() {
         >
           <Search className="w-3.5 h-3.5" />
           <span className="hidden lg:inline">Search</span>
-          <span className="kbd hidden lg:inline">⌘K</span>
+          <span className="kbd hidden lg:inline">K</span>
         </button>
 
         {/* Audio toggle */}

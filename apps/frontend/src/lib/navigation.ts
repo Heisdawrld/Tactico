@@ -24,6 +24,7 @@ export interface NavItem {
   description: string;
   badge?: 'live' | 'new' | 'count';
   badgeValue?: number;
+  category?: 'primary' | 'management' | 'match' | 'club' | 'user';
 }
 
 /**
@@ -39,6 +40,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: LayoutDashboard,
     shortcut: 'H',
     description: 'Club overview & key stats',
+    category: 'primary',
   },
   {
     id: 'squad',
@@ -48,6 +50,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Users,
     shortcut: 'S',
     description: 'Player roster & attributes',
+    category: 'primary',
   },
   {
     id: 'tactics',
@@ -57,6 +60,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: ClipboardList,
     shortcut: 'T',
     description: 'Formation & team instructions',
+    category: 'management',
   },
   {
     id: 'training',
@@ -66,6 +70,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Dumbbell,
     shortcut: 'R',
     description: 'Weekly schedule & development',
+    category: 'management',
   },
   {
     id: 'matches',
@@ -75,6 +80,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Calendar,
     shortcut: 'M',
     description: 'Fixtures & results',
+    category: 'match',
   },
   {
     id: 'match-simulation',
@@ -85,6 +91,7 @@ export const NAV_ITEMS: NavItem[] = [
     shortcut: 'L',
     description: 'Live 2D match simulation',
     badge: 'live',
+    category: 'match',
   },
   {
     id: 'transfers',
@@ -95,6 +102,7 @@ export const NAV_ITEMS: NavItem[] = [
     shortcut: 'X',
     description: 'Transfer market & negotiations',
     badge: 'new',
+    category: 'management',
   },
   {
     id: 'career',
@@ -104,6 +112,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: TrendingUp,
     shortcut: 'C',
     description: 'League table & board objectives',
+    category: 'club',
   },
   {
     id: 'finances',
@@ -113,6 +122,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: DollarSign,
     shortcut: 'F',
     description: 'Budgets, wages & facilities',
+    category: 'club',
   },
   {
     id: 'press',
@@ -122,6 +132,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Mic,
     shortcut: 'P',
     description: 'Press conferences & media',
+    category: 'club',
   },
   {
     id: 'settings',
@@ -131,11 +142,13 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Settings,
     shortcut: ',',
     description: 'Game settings & preferences',
+    category: 'user',
   },
 ];
 
 /**
- * Mobile bottom-tab items (subset — most-used only).
+ * Mobile bottom-tab items - NOW SHOWS ALL ITEMS for better discoverability
+ * Users can swipe to see more, or use the "More" button for grid view
  */
 export const MOBILE_NAV_ITEMS: NavItem[] = NAV_ITEMS.filter((item) =>
   ['dashboard', 'squad', 'tactics', 'matches', 'match-simulation'].includes(item.id)
@@ -151,3 +164,18 @@ export const SHORTCUT_TO_NAV: Record<string, NavSection> = NAV_ITEMS.reduce(
   },
   {} as Record<string, NavSection>
 );
+
+/**
+ * Get navigation items by category
+ */
+export function getNavItemsByCategory(category?: string): NavItem[] {
+  if (!category) return NAV_ITEMS;
+  return NAV_ITEMS.filter((item) => item.category === category);
+}
+
+/**
+ * Check if a path is a valid navigation path
+ */
+export function isValidNavPath(path: string): boolean {
+  return NAV_ITEMS.some((item) => item.href === path || path.startsWith(item.href + '/'));
+}

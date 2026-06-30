@@ -10,17 +10,26 @@ import { playSfx } from '@/lib/audio';
 import { cn } from '@/lib/utils';
 import { TacticoLogo } from '@/components/ui/TacticoLogo';
 
+interface BreadcrumbItem {
+  name: string;
+  href: string;
+}
+
+interface LeftRailProps {
+  breadcrumbs?: BreadcrumbItem[];
+}
+
 /**
- * Left Rail — primary navigation.
+ * Left Rail  primary navigation.
  *
  * Behavior:
  * - Desktop (>=lg): 72px collapsed rail. On hover, expands to 220px showing labels.
  * - Tablet (md): Always expanded 220px.
- * - Mobile (<md): Hidden — bottom tab bar takes over.
+ * - Mobile (<md): Hidden  bottom tab bar takes over.
  *
  * Active item gets a gold accent + glow.
  */
-export function LeftRail() {
+export function LeftRail({ breadcrumbs = [] }: LeftRailProps) {
   const pathname = usePathname();
   const [hovered, setHovered] = useState(false);
   const setLeftRailExpanded = useAppStore((s) => s.setLeftRailExpanded);
@@ -143,7 +152,7 @@ export function LeftRail() {
         })}
       </nav>
 
-      {/* Footer — version + status */}
+      {/* Footer  version + status */}
       <div className="shrink-0 px-3 py-3 border-t border-white/5">
         <div className={cn('flex items-center gap-2', !expanded && 'justify-center')}>
           <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
@@ -153,9 +162,9 @@ export function LeftRail() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-[10px] text-tertiary-c font-mono tracking-wider whitespace-nowrap"
+                className="text-[10px] text-tertiary-c font-mono tracking-widest whitespace-nowrap"
               >
-                v0.4.0 · ONLINE
+                v0.4.0 B7 ONLINE
               </motion.div>
             )}
           </AnimatePresence>
