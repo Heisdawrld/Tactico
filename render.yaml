@@ -5,7 +5,7 @@ services:
     env: node
     region: oregon
     plan: starter
-    buildCommand: cd apps/frontend && pnpm install && pnpm build
+    buildCommand: cd apps/frontend && pnpm install --no-frozen-lockfile && pnpm build
     startCommand: cd apps/frontend && NODE_ENV=production pnpm start
     envVars:
       - key: NODE_ENV

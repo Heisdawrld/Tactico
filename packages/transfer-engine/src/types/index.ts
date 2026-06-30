@@ -2,30 +2,55 @@
  * Transfer Engine Types
  * Core type definitions for the transfer market system
  *
- * Aligned with frontend types in apps/frontend/src/types/player.ts and club.ts
+ * Field names aligned with frontend types (apps/frontend/src/types/player.ts and club.ts)
+ * for seamless integration. IDs are `number`, ratings use `overallRating`/`potentialRating`.
  */
 
-// Re-export frontend types for compatibility
-export type { Player } from '../../../../apps/frontend/src/types/player';
-export type { Club } from '../../../../apps/frontend/src/types/club';
+// ============================================
+// PLAYER TYPE (aligned with frontend)
+// ============================================
 
-/**
- * Extended Player type with transfer-specific fields.
- * Uses frontend Player as base, adds personality traits.
- */
-export interface TransferPlayer {
+export interface Player {
   id: number;
   firstName: string;
   lastName: string;
+  fullName?: string;
   age: number;
-  nationality: string;
+  dateOfBirth?: string | null;
+  nationality?: string;
+  nationalityCode?: string | null;
+  clubId: number;
+  clubName?: string;
+  clubShort?: string;
+  clubColor?: string;
   position: string;
+  secondaryPositions?: string | null;
+  foot?: string | null;
+  height?: number | null;
+  weight?: number | null;
+  shirtNumber?: number | null;
   overallRating: number;
   potentialRating: number;
-  marketValue: number;
+  pace: number;
+  shooting: number;
+  passing: number;
+  dribbling: number;
+  defending: number;
+  physicality: number;
   wage: number;
-  contractExpires: string | null;
-  clubId: number;
+  morale: number;
+  fatigue?: number;
+  sharpness?: number;
+  stamina?: number;
+  injuryStatus: 'fit' | 'injured' | 'suspended';
+  injury?: string | null;
+  marketValue?: number;
+  contractExpires?: string | null;
+  appearances?: number;
+  goals?: number;
+  assists?: number;
+  cleanSheets?: number;
+  averageRating?: number;
   // Transfer-specific personality traits (optional)
   personality?: Personality;
   ambition?: number;
@@ -44,17 +69,31 @@ export interface Personality {
   ambition: number;
 }
 
-/**
- * Extended Club type with transfer-specific fields.
- * Uses frontend Club as base, adds financial details.
- */
-export interface TransferClub {
+// ============================================
+// CLUB TYPE (aligned with frontend)
+// ============================================
+
+export interface Club {
   id: number;
   name: string;
+  shortName: string;
+  country: string;
+  league: string;
+  leagueId: number | null;
+  leagueReputation?: number;
   reputation: number;
+  finances: number;
   balance: number;
   wageBudget: number;
   transferBudget: number;
+  marketValue: number;
+  stadium: string | null;
+  stadiumCapacity: number;
+  trainingFacilities: number;
+  youthAcademy: number;
+  coach: string | null;
+  homeKitColor: string;
+  awayKitColor: string;
   // Transfer-specific fields
   tacticalNeeds?: TacticalNeeds;
   scoutingNetwork?: number;
@@ -71,6 +110,10 @@ export interface TacticalNeeds {
   positions: Record<string, number>; // position -> priority (1-10)
   playingStyle: string;
 }
+
+// ============================================
+// TRANSFER TYPES
+// ============================================
 
 export interface TransferOffer {
   id: string;
