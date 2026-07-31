@@ -1,4 +1,5 @@
 import {
+  Inbox,
   LayoutDashboard,
   Users,
   ClipboardList,
@@ -14,13 +15,15 @@ import {
 } from 'lucide-react';
 import type { NavSection } from '@/lib/store';
 
+export type NavigationSection = NavSection | 'inbox';
+
 export interface NavItem {
-  id: NavSection;
+  id: NavigationSection;
   label: string;
   shortLabel: string;
   href: string;
   icon: LucideIcon;
-  shortcut: string;       // keyboard shortcut
+  shortcut: string;
   description: string;
   badge?: 'live' | 'new' | 'count';
   badgeValue?: number;
@@ -28,18 +31,28 @@ export interface NavItem {
 }
 
 /**
- * Primary navigation items for the Hybrid Command Center.
- * Order = order shown in the left rail.
+ * Football-manager-style navigation.
+ * Inbox is the manager's daily command centre; every other screen is a department.
  */
 export const NAV_ITEMS: NavItem[] = [
   {
+    id: 'inbox',
+    label: 'Inbox',
+    shortLabel: 'INBOX',
+    href: '/inbox',
+    icon: Inbox,
+    shortcut: 'I',
+    description: 'Messages, decisions and matchday actions',
+    category: 'primary',
+  },
+  {
     id: 'dashboard',
-    label: 'Dashboard',
+    label: 'Home',
     shortLabel: 'HOME',
     href: '/dashboard',
     icon: LayoutDashboard,
     shortcut: 'H',
-    description: 'Club overview & key stats',
+    description: 'Club overview and key information',
     category: 'primary',
   },
   {
@@ -49,7 +62,7 @@ export const NAV_ITEMS: NavItem[] = [
     href: '/squad',
     icon: Users,
     shortcut: 'S',
-    description: 'Player roster & attributes',
+    description: 'Players, selection and squad status',
     category: 'primary',
   },
   {
@@ -59,7 +72,7 @@ export const NAV_ITEMS: NavItem[] = [
     href: '/tactics',
     icon: ClipboardList,
     shortcut: 'T',
-    description: 'Formation & team instructions',
+    description: 'Formation, roles and team instructions',
     category: 'management',
   },
   {
@@ -69,113 +82,100 @@ export const NAV_ITEMS: NavItem[] = [
     href: '/training',
     icon: Dumbbell,
     shortcut: 'R',
-    description: 'Weekly schedule & development',
+    description: 'Schedule, workload and development',
     category: 'management',
   },
   {
     id: 'matches',
-    label: 'Matches',
+    label: 'Schedule',
     shortLabel: 'FIX',
     href: '/matches',
     icon: Calendar,
     shortcut: 'M',
-    description: 'Fixtures & results',
+    description: 'Fixtures, results and match preparation',
     category: 'match',
   },
   {
     id: 'match-simulation',
-    label: 'Match Day',
+    label: 'Match Centre',
     shortLabel: 'LIVE',
     href: '/match-simulation',
     icon: PlayCircle,
     shortcut: 'L',
-    description: 'Live 2D match simulation',
+    description: 'Team talks, lineups and live match management',
     badge: 'live',
     category: 'match',
   },
   {
     id: 'transfers',
-    label: 'Transfers',
+    label: 'Recruitment',
     shortLabel: 'TRN',
     href: '/transfers',
     icon: ArrowLeftRight,
     shortcut: 'X',
-    description: 'Transfer market & negotiations',
-    badge: 'new',
+    description: 'Scouting, transfers and negotiations',
     category: 'management',
   },
   {
     id: 'career',
-    label: 'Career',
-    shortLabel: 'CAR',
+    label: 'Competitions',
+    shortLabel: 'COMP',
     href: '/career',
     icon: TrendingUp,
     shortcut: 'C',
-    description: 'League table & board objectives',
+    description: 'Tables, objectives and season progress',
     category: 'club',
   },
   {
     id: 'finances',
-    label: 'Finances',
-    shortLabel: 'FIN',
+    label: 'Club Info',
+    shortLabel: 'CLUB',
     href: '/finances',
     icon: DollarSign,
     shortcut: 'F',
-    description: 'Budgets, wages & facilities',
+    description: 'Finances, budgets and facilities',
     category: 'club',
   },
   {
     id: 'press',
-    label: 'Press',
-    shortLabel: 'PRESS',
+    label: 'Media',
+    shortLabel: 'MEDIA',
     href: '/press',
     icon: Mic,
     shortcut: 'P',
-    description: 'Press conferences & media',
+    description: 'Press conferences and public narrative',
     category: 'club',
   },
   {
     id: 'settings',
-    label: 'Settings',
+    label: 'Preferences',
     shortLabel: 'SET',
     href: '/settings',
     icon: Settings,
     shortcut: ',',
-    description: 'Game settings & preferences',
+    description: 'Game settings and preferences',
     category: 'user',
   },
 ];
 
-/**
- * Mobile bottom-tab items - NOW SHOWS ALL ITEMS for better discoverability
- * Users can swipe to see more, or use the "More" button for grid view
- */
+/** The five fastest mobile destinations, with Inbox always first. */
 export const MOBILE_NAV_ITEMS: NavItem[] = NAV_ITEMS.filter((item) =>
-  ['dashboard', 'squad', 'tactics', 'matches', 'match-simulation'].includes(item.id)
+  ['inbox', 'dashboard', 'squad', 'tactics', 'matches'].includes(item.id)
 );
 
-/**
- * Map keyboard shortcuts to nav sections.
- */
-export const SHORTCUT_TO_NAV: Record<string, NavSection> = NAV_ITEMS.reduce(
+export const SHORTCUT_TO_NAV: Record<string, NavigationSection> = NAV_ITEMS.reduce(
   (acc, item) => {
     acc[item.shortcut.toLowerCase()] = item.id;
     return acc;
   },
-  {} as Record<string, NavSection>
+  {} as Record<string, NavigationSection>
 );
 
-/**
- * Get navigation items by category
- */
 export function getNavItemsByCategory(category?: string): NavItem[] {
   if (!category) return NAV_ITEMS;
   return NAV_ITEMS.filter((item) => item.category === category);
 }
 
-/**
- * Check if a path is a valid navigation path
- */
 export function isValidNavPath(path: string): boolean {
   return NAV_ITEMS.some((item) => item.href === path || path.startsWith(item.href + '/'));
 }
