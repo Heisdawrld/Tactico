@@ -15,8 +15,10 @@ import {
 } from 'lucide-react';
 import type { NavSection } from '@/lib/store';
 
+export type NavigationSection = NavSection | 'inbox';
+
 export interface NavItem {
-  id: NavSection;
+  id: NavigationSection;
   label: string;
   shortLabel: string;
   href: string;
@@ -161,12 +163,12 @@ export const MOBILE_NAV_ITEMS: NavItem[] = NAV_ITEMS.filter((item) =>
   ['inbox', 'dashboard', 'squad', 'tactics', 'matches'].includes(item.id)
 );
 
-export const SHORTCUT_TO_NAV: Record<string, NavSection> = NAV_ITEMS.reduce(
+export const SHORTCUT_TO_NAV: Record<string, NavigationSection> = NAV_ITEMS.reduce(
   (acc, item) => {
     acc[item.shortcut.toLowerCase()] = item.id;
     return acc;
   },
-  {} as Record<string, NavSection>
+  {} as Record<string, NavigationSection>
 );
 
 export function getNavItemsByCategory(category?: string): NavItem[] {
