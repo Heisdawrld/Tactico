@@ -795,7 +795,7 @@ export class MediaEngine {
       `There have been rumors about a big-name signing. Can you comment on that?`,
       `How are you handling the injury crisis in your squad?`,
       `What's your message to the fans after the recent run of poor results?`,
-      `How do you plan to stop ${this.getRandomPlayerFromOtherClub(club.id)?.firstName || 'the opposition's star player'} in the next match?`,
+      `How do you plan to stop ${this.getRandomPlayerFromOtherClub(club.id)?.firstName || "the opposition's star player"} in the next match?`,
       `Are you under pressure from the board to improve results?`,
       `What's your assessment of your team's chances in the upcoming competition?`,
       `How do you motivate your players during a difficult period?`,
@@ -1925,7 +1925,7 @@ export class MediaEngine {
         speakerType: 'manager',
         speakerName: `${manager.firstName} ${manager.lastName}`,
         quote: `${player.firstName} is a key player for us. He brings quality and leadership to the team.`,
-        context: 'On the player's importance to the team',
+        context: "On the player's importance to the team",
       });
     }
 
@@ -2198,7 +2198,7 @@ export class MediaEngine {
         speakerType: 'chairman',
         speakerName: 'Club Chairman',
         quote: `${manager.firstName} has done an excellent job. We're very happy with his work.`,
-        context: 'On the manager's performance',
+        context: "On the manager's performance",
       });
     }
 

@@ -196,11 +196,11 @@ const POSITION_TEMPLATES: Record<string, Partial<Record<keyof PlayerAttributes, 
     technique: 80, // "ball playing"
     passing: 75,
     long_throws: 90, // "kicking"
-    agility: 95, anticipation: 95, composure: 90, concentration: 95,
+    anticipation: 95, composure: 90, concentration: 95,
     decisions: 90, positioning: 95, bravery: 85, leadership: 70,
     // Physical
     acceleration: 75, balance: 80, jumping_reach: 85, natural_fitness: 80,
-    reflexes: 95, // (we'll stuff into agility)
+    agility: 95, // (agility stuffed into agility)
   },
   // ---------- DEFENDERS ----------
   CB: {
@@ -242,8 +242,8 @@ const POSITION_TEMPLATES: Record<string, Partial<Record<keyof PlayerAttributes, 
     first_touch: 85, dribbling: 80, work_rate: 82, concentration: 82,
   },
   CAM: {
-    passing: 92, vision: 95, technique: 92, flair: 90, first_touch: 90,
-    dribbling: 88, creativity: 90, long_shots: 82, decisions: 85,
+    passing: 92, technique: 92, flair: 90, first_touch: 90,
+    dribbling: 88, vision: 95, long_shots: 82, decisions: 85,
     composure: 85, agility: 82, anticipation: 82,
   },
   RW: { // also LW
@@ -346,7 +346,7 @@ export function generateAttributes(
     attrs[attr] = computeAttr(weight);
   }
 
-  // Special handling for goalkeepers — boost reflexes via agility
+  // Special handling for goalkeepers — boost agility via agility
   if (posKey === 'GK') {
     attrs.agility = clamp(overall + 3 + (Math.random() - 0.5) * 4);
     attrs.anticipation = clamp(overall + 2 + (Math.random() - 0.5) * 4);
