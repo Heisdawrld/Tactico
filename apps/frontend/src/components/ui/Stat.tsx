@@ -80,19 +80,27 @@ export function StatBlock({
 
 /**
  * RatingBadge — colored rating number (gold/green/yellow/red based on value).
+ * Supports both the current `rating` prop and the legacy `value` prop.
  *
  * @example
  * <RatingBadge rating={91} />
+ * <RatingBadge value={91} label="Confidence" />
  */
 export function RatingBadge({
   rating,
+  value,
+  label,
   size = 'md',
   className,
 }: {
-  rating: number;
+  rating?: number;
+  value?: number;
+  max?: number;
+  label?: string;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }) {
+  const resolvedRating = rating ?? value ?? 0;
   const sizes = {
     sm: 'w-7 h-7 text-xs',
     md: 'w-9 h-9 text-sm',
@@ -100,14 +108,15 @@ export function RatingBadge({
   };
   return (
     <span
+      aria-label={label ? `${label}: ${resolvedRating}` : `Rating: ${resolvedRating}`}
       className={cn(
         'inline-flex items-center justify-center rounded-md font-mono font-bold tabular-nums',
-        ratingColor(rating),
+        ratingColor(resolvedRating),
         sizes[size],
         className
       )}
     >
-      {rating}
+      {resolvedRating}
     </span>
   );
 }
