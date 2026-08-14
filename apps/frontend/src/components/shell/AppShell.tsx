@@ -60,6 +60,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const breadcrumbs = useBreadcrumbs(pathname);
+  const isBareRoute =
+    pathname === '/' ||
+    pathname === '/start' ||
+    pathname.startsWith('/auth') ||
+    pathname === '/match-lab' ||
+    pathname.startsWith('/match-lab/');
 
   useAudioEngine();
 
@@ -69,6 +75,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Enhanced keyboard navigation with better conflict handling
   useEffect(() => {
+    if (isBareRoute) return;
+
     let lastKey = '';
     let lastKeyTime = 0;
 
@@ -113,13 +121,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [router]);
+  }, [isBareRoute, router]);
 
-  const isStartPage = pathname === '/' || pathname === '/start';
-  const isAuthPage = pathname.startsWith('/auth');
-
-  // For start and auth pages, don't show the shell
-  if (isStartPage || isAuthPage) {
+  // Start, auth, and immersive match-development routes own their full viewport.
+  if (isBareRoute) {
     return (
       <ErrorBoundary>
         {children}
