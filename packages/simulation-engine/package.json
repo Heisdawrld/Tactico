@@ -48,6 +48,16 @@
     "./core/constants": {
       "import": "./src/core/constants.ts",
       "types": "./src/core/constants.ts"
+    },
+    "./protocol": {
+      "import": "./src/protocol/index.ts",
+      "require": "./src/protocol/index.ts",
+      "types": "./src/protocol/index.ts"
+    },
+    "./spatial": {
+      "import": "./src/spatial/index.ts",
+      "require": "./src/spatial/index.ts",
+      "types": "./src/spatial/index.ts"
     }
   }
 }
