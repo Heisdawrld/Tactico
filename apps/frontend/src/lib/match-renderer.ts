@@ -4,7 +4,7 @@
 import * as PIXI from 'pixi.js';
 import * as Matter from 'matter-js';
 import { SimulationEngine } from '@tactico/simulation-engine';
-import type { MatchEvent, AITeamState, AIPlayerState, Coordinates } from '@tactico/simulation-engine';
+import type { EntityId, MatchEvent, AITeamState, AIPlayerState, Coordinates } from '@tactico/simulation-engine';
 
 // ============================================================
 // CONFIGURATION
@@ -166,7 +166,7 @@ export class MatchRenderer {
   private effectsContainer: PIXI.Container;
   private uiContainer: PIXI.Container;
 
-  private playerSprites: Map<number, PIXI.Container> = new Map();
+  private playerSprites: Map<EntityId, PIXI.Container> = new Map();
   private ballSprite: PIXI.Graphics | null = null;
   private pitchGraphics: PIXI.Graphics | null = null;
 
@@ -198,7 +198,7 @@ export class MatchRenderer {
     this.awayFormation = options.awayFormation || '4-3-3';
 
     this.app = new PIXI.Application({
-      canvas,
+      view: canvas,
       width: PITCH_CONFIG.width + PITCH_CONFIG.margin * 2,
       height: PITCH_CONFIG.height + PITCH_CONFIG.margin * 2,
       backgroundColor: 0x0A0A0F,
@@ -443,13 +443,13 @@ export class MatchRenderer {
   // ANIMATION SYSTEM
   // ============================================================
 
-  animatePass(fromPlayerId: number, toPlayerId: number | null, toPosition?: Coordinates): void {
+  animatePass(fromPlayerId: EntityId, toPlayerId: EntityId | null, toPosition?: Coordinates): void {
     const fromSprite = this.playerSprites.get(fromPlayerId);
     if (!fromSprite) return;
 
     let targetX: number, targetY: number;
 
-    if (toPlayerId && this.playerSprites.has(toPlayerId)) {
+    if (toPlayerId !== null && this.playerSprites.has(toPlayerId)) {
       const toSprite = this.playerSprites.get(toPlayerId)!;
       targetX = toSprite.x;
       targetY = toSprite.y;
@@ -491,7 +491,7 @@ export class MatchRenderer {
     });
   }
 
-  animateShot(shooterId: number, onTarget: boolean, isGoal: boolean): void {
+  animateShot(shooterId: EntityId, onTarget: boolean, isGoal: boolean): void {
     const shooter = this.playerSprites.get(shooterId);
     if (!shooter) return;
 
@@ -539,7 +539,7 @@ export class MatchRenderer {
     });
   }
 
-  animateTackle(tacklerId: number, tackledId: number, success: boolean): void {
+  animateTackle(tacklerId: EntityId, tackledId: EntityId, success: boolean): void {
     const tackler = this.playerSprites.get(tacklerId);
     const tackled = this.playerSprites.get(tackledId);
     if (!tackler || !tackled) return;
@@ -631,7 +631,7 @@ export class MatchRenderer {
   onMatchEvent(event: MatchEvent): void {
     switch (event.type) {
       case 'pass':
-        if (event.success && event.receiverId) {
+        if (event.success && event.receiverId !== null) {
           this.animatePass(event.passerId, event.receiverId, event.to);
         } else if (event.success && event.to) {
           this.animatePass(event.passerId, null, event.to);
@@ -677,7 +677,7 @@ export class MatchRenderer {
     }
   }
 
-  private showCard(playerId: number, card: 'yellow' | 'red' | 'second_yellow'): void {
+  private showCard(playerId: EntityId, card: 'yellow' | 'red' | 'second_yellow'): void {
     const player = this.playerSprites.get(playerId);
     if (!player) return;
 
@@ -752,7 +752,7 @@ export class MatchRenderer {
   // PUBLIC API
   // ============================================================
 
-  updatePlayerPositions(teamStates: Map<number, AITeamState>): void {
+  updatePlayerPositions(teamStates: Map<EntityId, AITeamState>): void {
     teamStates.forEach((teamState, teamId) => {
       const isHome = teamId === (teamState as any).isHomeTeam;
       const formation = isHome ? this.homeFormation : this.awayFormation;
@@ -767,7 +767,7 @@ export class MatchRenderer {
     });
   }
 
-  highlightPlayer(playerId: number): void {
+  highlightPlayer(playerId: EntityId): void {
     this.playerSprites.forEach((sprite, id) => {
       const circle = sprite.children[0] as PIXI.Graphics;
       if (id === playerId) {
@@ -819,7 +819,7 @@ export class MatchRenderer {
   }
 
   destroy(): void {
-    this.app.destroy(true, { children: true, texture: true, baseTexture: true });
+    this.app.destroy(false, { children: true, texture: true, baseTexture: true });
   }
 }
 

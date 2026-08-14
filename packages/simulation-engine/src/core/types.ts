@@ -398,6 +398,21 @@ export interface DribbleEvent extends BaseEvent {
   beatenPlayerId?: EntityId;
 }
 
+export interface OffsideEvent extends BaseEvent {
+  type: 'offside';
+  playerId: EntityId;
+  teamId: EntityId;
+  coordinates: Coordinates;
+}
+
+export interface HalfTimeEvent extends BaseEvent {
+  type: 'half_time';
+}
+
+export interface FullTimeEvent extends BaseEvent {
+  type: 'full_time';
+}
+
 export type MatchEvent =
   | PossessionEvent
   | PassEvent
@@ -411,7 +426,10 @@ export type MatchEvent =
   | SetPieceEvent
   | PressEvent
   | InterceptEvent
-  | DribbleEvent;
+  | DribbleEvent
+  | OffsideEvent
+  | HalfTimeEvent
+  | FullTimeEvent;
 
 // ============================================
 // SIMULATION TYPES
@@ -817,9 +835,9 @@ export type MatchPhase =
 
 export interface PhaseState {
   phase: MatchPhase;
-  possessionTeam: number | null;
-  ballCarrier: number | null;
-  lastPasser: number | null;
+  possessionTeam: EntityId | null;
+  ballCarrier: EntityId | null;
+  lastPasser: EntityId | null;
   pressureLevel: number;
   dangerLevel: number;
   phaseTimer: number;

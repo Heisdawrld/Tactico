@@ -3,18 +3,55 @@
 
 // Matter.js is optional — only available in browser context.
 // Server-side simulation works without physics rendering.
-let Matter: any = null;
+interface LegacyMatterBody {
+  readonly label: string;
+  readonly position: { readonly x: number; readonly y: number };
+}
+
+interface LegacyMatterEngine {
+  readonly world: object;
+}
+
+interface LegacyMatterApi {
+  readonly Engine: {
+    create: () => LegacyMatterEngine;
+    update: (engine: LegacyMatterEngine, deltaMs: number) => void;
+    clear: (engine: LegacyMatterEngine) => void;
+  };
+  readonly Bodies: {
+    rectangle: (
+      x: number,
+      y: number,
+      width: number,
+      height: number,
+      options?: Record<string, unknown>,
+    ) => LegacyMatterBody;
+    circle: (
+      x: number,
+      y: number,
+      radius: number,
+      options?: Record<string, unknown>,
+    ) => LegacyMatterBody;
+  };
+  readonly World: {
+    add: (world: object, bodies: LegacyMatterBody | readonly LegacyMatterBody[]) => void;
+    clear: (world: object, keepStatic: boolean) => void;
+  };
+}
+
+declare const require: (moduleName: string) => unknown;
+
+let Matter: LegacyMatterApi | null = null;
 try {
   // Dynamic import — won't crash in Node.js
   if (typeof window !== 'undefined') {
-    Matter = require('matter-js');
+    Matter = require('matter-js') as LegacyMatterApi;
   }
 } catch {
   // Running on server — physics disabled, simulation still works
 }
 
 import {
-  MatchState,
   MatchEvent,
   MatchStats,
   SimulationConfig,
@@ -24,8 +61,10 @@ import {
   PlayerRole,
   Coordinates,
   AIDecision,
+  AIDecisionType,
   AIPlayerState,
   AITeamState,
+  EntityId,
   Player,
   Club,
 } from './types';
@@ -53,9 +92,9 @@ type MatchPhase =
 
 interface PhaseState {
   phase: MatchPhase;
-  possessionTeam: number | null;
-  ballCarrier: number | null;
-  lastPasser: number | null;
+  possessionTeam: EntityId | null;
+  ballCarrier: EntityId | null;
+  lastPasser: EntityId | null;
   pressureLevel: number; // 0-100
   dangerLevel: number; // 0-100, distance to goal
   phaseTimer: number; // seconds in current phase
@@ -98,6 +137,8 @@ interface PlayerAttributes {
   teamwork: number;
   vision: number;
   workRate: number;
+  tackling: number;
+  defending: number;
 }
 
 function mapPlayerToAttributes(player: Player): PlayerAttributes {
@@ -134,6 +175,8 @@ function mapPlayerToAttributes(player: Player): PlayerAttributes {
     teamwork: player.passing || Math.round(player.passing || (player.overallRating - 5 + Math.random() * 10)),
     vision: player.passing || Math.round(player.passing || (player.overallRating - 8 + Math.random() * 16)),
     workRate: player.physicality || Math.round(player.physicality || (player.overallRating - 10 + Math.random() * 20)),
+    tackling: player.defending,
+    defending: player.defending,
   };
 }
 
@@ -439,7 +482,7 @@ function selectBestDecision(ctx: DecisionContext): AIDecision | null {
 function createDecision(ctx: DecisionContext, prob: DecisionProbability): AIDecision {
   const { player, teamState } = ctx;
 
-  let target: number | Coordinates | undefined;
+  let target: EntityId | Coordinates | undefined;
 
   if (prob.type === 'pass') {
     // Find best passing target based on vision and teamwork
@@ -462,7 +505,7 @@ function createDecision(ctx: DecisionContext, prob: DecisionProbability): AIDeci
   };
 }
 
-function findBestPassTarget(ctx: DecisionContext): number | Coordinates {
+function findBestPassTarget(ctx: DecisionContext): EntityId | Coordinates {
   // Simplified: return a teammate ID or coordinates
   // In full implementation, this would analyze positions, pressure, and passing lanes
   const teammates = ctx.teamState.playerStates.filter(p => p.playerId !== ctx.player.playerId && !p.isInjured && !p.isSentOff);
@@ -572,10 +615,10 @@ function calculateDangerLevel(position: Coordinates): number {
 export class SimulationEngine {
   private config: SimulationConfig;
   private state: SimulationState;
-  private physicsEngine: Matter.Engine | null = null;
-  private physicsBodies: Matter.Body[] = [];
-  private aiTeams: Map<number, AITeamState> = new Map();
-  private playerAttributes: Map<number, PlayerAttributes> = new Map();
+  private physicsEngine: LegacyMatterEngine | null = null;
+  private physicsBodies: LegacyMatterBody[] = [];
+  private aiTeams: Map<EntityId, AITeamState> = new Map();
+  private playerAttributes: Map<EntityId, PlayerAttributes> = new Map();
   private decisionQueue: AIDecision[] = [];
   private eventQueue: MatchEvent[] = [];
   private phaseState: PhaseState;
@@ -643,7 +686,7 @@ export class SimulationEngine {
   }
 
   private setupPhysicsWorld(): void {
-    if (!this.physicsEngine) return;
+    if (!this.physicsEngine || !Matter) return;
 
     const ground = Matter.Bodies.rectangle(
       MATCH_CONSTANTS.PITCH_WIDTH / 2,
@@ -695,7 +738,7 @@ export class SimulationEngine {
       phaseTimer: 0,
     };
 
-    if (this.physicsEngine) {
+    if (this.physicsEngine && Matter) {
       const bodiesToKeep = this.physicsBodies.slice(0, 4);
       this.physicsBodies = bodiesToKeep;
       Matter.World.clear(this.physicsEngine.world, false);
@@ -760,14 +803,14 @@ export class SimulationEngine {
 
   private getPositionForIndex(index: number, formation: string): PlayerRole {
     const formations: Record<string, PlayerRole[]> = {
-      '4-4-2': ['GK', 'RB', 'CB', 'CB', 'LB', 'RM', 'CM', 'CM', 'LM', 'ST', 'ST'],
+      '4-4-2': ['GK', 'RB', 'CB', 'CB', 'LB', 'AMR', 'CM', 'CM', 'AML', 'ST', 'ST'],
       '4-3-3': ['GK', 'RB', 'CB', 'CB', 'LB', 'CDM', 'CM', 'CM', 'RW', 'ST', 'LW'],
       '3-5-2': ['GK', 'CB', 'CB', 'CB', 'RWB', 'CDM', 'CM', 'LWB', 'CAM', 'ST', 'ST'],
       '4-2-3-1': ['GK', 'RB', 'CB', 'CB', 'LB', 'CDM', 'CDM', 'CAM', 'CAM', 'CAM', 'ST'],
       '5-3-2': ['GK', 'RWB', 'CB', 'CB', 'CB', 'LWB', 'CDM', 'CM', 'CM', 'ST', 'ST'],
-      '3-4-3': ['GK', 'CB', 'CB', 'CB', 'RM', 'CM', 'CM', 'LM', 'RW', 'ST', 'LW'],
-      '4-1-4-1': ['GK', 'RB', 'CB', 'CB', 'LB', 'CDM', 'RM', 'CM', 'CM', 'LM', 'ST'],
-      '5-4-1': ['GK', 'RWB', 'CB', 'CB', 'CB', 'LWB', 'RM', 'CM', 'CM', 'LM', 'ST'],
+      '3-4-3': ['GK', 'CB', 'CB', 'CB', 'AMR', 'CM', 'CM', 'AML', 'RW', 'ST', 'LW'],
+      '4-1-4-1': ['GK', 'RB', 'CB', 'CB', 'LB', 'CDM', 'AMR', 'CM', 'CM', 'AML', 'ST'],
+      '5-4-1': ['GK', 'RWB', 'CB', 'CB', 'CB', 'LWB', 'AMR', 'CM', 'CM', 'AML', 'ST'],
     };
 
     const positions = formations[formation] || formations['4-3-3'];
@@ -811,7 +854,7 @@ export class SimulationEngine {
   }
 
   private addBall(): void {
-    if (!this.physicsEngine) return;
+    if (!this.physicsEngine || !Matter) return;
 
     const ball = Matter.Bodies.circle(
       MATCH_CONSTANTS.PITCH_WIDTH / 2,
@@ -874,7 +917,7 @@ export class SimulationEngine {
     this.lastTime = now;
 
     // Update physics
-    if (this.physicsEngine && this.config.enablePhysics) {
+    if (this.physicsEngine && this.config.enablePhysics && Matter) {
       Matter.Engine.update(this.physicsEngine, delta);
     }
 
@@ -946,7 +989,7 @@ export class SimulationEngine {
     });
   }
 
-  private findPlayerById(playerId: number): Player | undefined {
+  private findPlayerById(playerId: EntityId): Player | undefined {
     return [...this.homeSquad, ...this.awaySquad].find(p => p.id === playerId);
   }
 
@@ -983,7 +1026,9 @@ export class SimulationEngine {
     switch (decision.type) {
       case 'pass': {
         const success = this.resolvePass(decision, attributes, teamState);
-        const receiverId = typeof decision.target === 'number' ? decision.target : null;
+        const receiverId = typeof decision.target === 'number' || typeof decision.target === 'string'
+          ? decision.target
+          : null;
 
         return {
           ...baseEvent,
@@ -1023,14 +1068,11 @@ export class SimulationEngine {
         return {
           ...baseEvent,
           type: 'dribble',
-          passerId: decision.playerId,
-          receiverId: decision.playerId,
+          playerId: decision.playerId,
           teamId: decision.teamId,
           success,
           from: { x: 0.5, y: 0.5 },
           to: { x: 0.55, y: 0.55 },
-          passType: 'short',
-          accuracy: attributes.dribbling,
         };
       }
 
@@ -1054,6 +1096,10 @@ export class SimulationEngine {
         return {
           ...baseEvent,
           type: 'press',
+          playerId: decision.playerId,
+          teamId: decision.teamId,
+          coordinates: { x: 0.5, y: 0.5 },
+          success: true,
           description: `${player.firstName} ${player.lastName} presses high up the pitch`,
         };
       }
@@ -1064,6 +1110,10 @@ export class SimulationEngine {
         return {
           ...baseEvent,
           type: 'intercept',
+          playerId: decision.playerId,
+          teamId: decision.teamId,
+          coordinates: { x: 0.5, y: 0.5 },
+          fromPasserId: this.phaseState.lastPasser ?? decision.playerId,
           description: success 
             ? `${player.firstName} ${player.lastName} reads the pass and intercepts!`
             : `${player.firstName} ${player.lastName} nearly intercepts but just misses`,
@@ -1329,25 +1379,25 @@ export class SimulationEngine {
     return { ...this.phaseState };
   }
 
-  getAITeamState(teamId: number): AITeamState | undefined {
+  getAITeamState(teamId: EntityId): AITeamState | undefined {
     return this.aiTeams.get(teamId);
   }
 
-  getAllAITeamStates(): Map<number, AITeamState> {
+  getAllAITeamStates(): Map<EntityId, AITeamState> {
     return new Map(this.aiTeams);
   }
 
-  getPhysicsEngine(): Matter.Engine | null {
+  getPhysicsEngine(): LegacyMatterEngine | null {
     return this.physicsEngine;
   }
 
-  getPhysicsBodies(): Matter.Body[] {
+  getPhysicsBodies(): LegacyMatterBody[] {
     return [...this.physicsBodies];
   }
 
   destroy(): void {
     this.stop();
-    if (this.physicsEngine) {
+    if (this.physicsEngine && Matter) {
       Matter.Engine.clear(this.physicsEngine);
       this.physicsEngine = null;
     }

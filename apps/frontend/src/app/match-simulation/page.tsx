@@ -8,13 +8,27 @@ import { useAppStore } from '@/lib/store';
 import { playSfx } from '@/lib/audio';
 import { SimulationEngine } from '@tactico/simulation-engine';
 import { MatchRenderer } from '@/lib/match-renderer';
-import type { MatchEvent, SimulationState, PhaseState, TeamInstructions } from '@tactico/simulation-engine';
+import type { EntityId, MatchEvent, SimulationState, PhaseState, TeamInstructions } from '@tactico/simulation-engine';
 import { getOfflineClub, getOfflineSquad } from '@/lib/game-data';
 import { cn } from '@/lib/utils';
 
 // ============================================================
 // MATCH SIMULATION PAGE
 // ============================================================
+
+function getMatchEventTeamId(event: MatchEvent): EntityId | null {
+  switch (event.type) {
+    case 'tackle':
+      return event.tacklerTeamId;
+    case 'foul':
+      return event.foulerTeamId;
+    case 'half_time':
+    case 'full_time':
+      return null;
+    default:
+      return event.teamId;
+  }
+}
 
 export default function MatchSimulationPage() {
   const router = useRouter();
@@ -530,9 +544,17 @@ export default function MatchSimulationPage() {
                     </span>
                     <span className={cn(
                       "text-xs font-semibold uppercase",
-                      event.teamId === currentFixture?.homeClubId ? "text-primary-c" : "text-secondary-c"
+                      getMatchEventTeamId(event) === null
+                        ? "text-tertiary-c"
+                        : getMatchEventTeamId(event) === currentFixture?.homeClubId
+                          ? "text-primary-c"
+                          : "text-secondary-c"
                     )}>
-                      {event.teamId === currentFixture?.homeClubId ? homeClub?.shortName : awayClub?.shortName}
+                      {getMatchEventTeamId(event) === null
+                        ? 'Match'
+                        : getMatchEventTeamId(event) === currentFixture?.homeClubId
+                          ? homeClub?.shortName
+                          : awayClub?.shortName}
                     </span>
                     <span className="text-xs text-secondary-c">
                       {event.type === 'goal' && '⚽ Goal'}

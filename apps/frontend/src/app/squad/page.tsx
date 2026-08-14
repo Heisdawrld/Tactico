@@ -22,7 +22,9 @@ import {
 import { Calendar, DollarSign, Star, Users } from 'lucide-react';
 
 // Position groups for organizing the squad
-const POSITION_GROUPS: { id: string; label: string; positions: PlayerPosition[]; color: string }[] = [
+type SquadPosition = PlayerPosition | 'AMC' | 'AMR' | 'AML';
+
+const POSITION_GROUPS: { id: string; label: string; positions: SquadPosition[]; color: string }[] = [
   {
     id: 'goalkeepers',
     label: 'Goalkeepers',
@@ -52,7 +54,7 @@ const POSITION_GROUPS: { id: string; label: string; positions: PlayerPosition[];
 // Get position group for a player
 function getPositionGroup(player: Player): { label: string; color: string } {
   for (const group of POSITION_GROUPS) {
-    if (group.positions.includes(player.position as PlayerPosition)) {
+    if (group.positions.includes(player.position as SquadPosition)) {
       return { label: group.label, color: group.color };
     }
   }
@@ -277,7 +279,7 @@ function SquadContent() {
                               </div>
                             </div>
                             <div className="flex items-center gap-3">
-                              <RatingBadge value={player.potentialAbility || player.overallRating} max={99} size="sm" label="Potential" />
+                              <RatingBadge value={player.potentialRating || player.overallRating} max={99} size="sm" label="Potential" />
                               <span className="text-sm font-medium text-muted-foreground">
                                 {formatCurrency(player.marketValue || 0)}
                               </span>

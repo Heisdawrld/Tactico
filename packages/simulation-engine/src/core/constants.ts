@@ -1,5 +1,7 @@
 // TACTICO Simulation Engine - Core Constants
 
+import type { PlayerRole, TacticalStyle } from './types';
+
 // ============================================
 // MATCH CONSTANTS
 // ============================================
