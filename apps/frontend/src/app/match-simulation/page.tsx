@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, Square, FastForward, RotateCcw, ChevronLeft, Volume2, VolumeX } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
+import type { CareerFixture } from '@/lib/career-engine';
+import { careerTeamInstructions } from '@/lib/career-match-setup';
 import { playSfx } from '@/lib/audio';
 import { SimulationEngine } from '@tactico/simulation-engine';
 import { MatchRenderer } from '@/lib/match-renderer';
@@ -50,10 +52,9 @@ export default function MatchSimulationPage() {
   const [homeScore, setHomeScore] = useState(0);
   const [awayScore, setAwayScore] = useState(0);
   const [possession, setPossession] = useState({ home: 50, away: 50 });
-  // Refs to avoid stale closures in setInterval
-  const homeScoreRef = useRef(0);
-  const awayScoreRef = useRef(0);
+  // Retain the fixture while its result is committed and the career advances.
   const matchRecordedRef = useRef(false);
+  const fixtureRef = useRef<CareerFixture | null>(null);
 
   const store = useAppStore();
   const selectedClubId = store.selectedClubId;
@@ -61,12 +62,14 @@ export default function MatchSimulationPage() {
   const tactics = store.tactics;
 
   // Find the next live fixture
-  const currentFixture = fixtures.find(f => f.status === 'live' || f.status === 'scheduled');
+  if (!fixtureRef.current) fixtureRef.current = fixtures.find(f =>
+    (f.homeClubId === selectedClubId || f.awayClubId === selectedClubId) && f.status !== 'finished') ?? null;
+  const currentFixture = fixtureRef.current;
 
   const homeClub = currentFixture ? getOfflineClub(currentFixture.homeClubId) : null;
   const awayClub = currentFixture ? getOfflineClub(currentFixture.awayClubId) : null;
-  const homeSquad = currentFixture ? getOfflineSquad(currentFixture.homeClubId) : [];
-  const awaySquad = currentFixture ? getOfflineSquad(currentFixture.awayClubId) : [];
+  const homeSquad = currentFixture ? (store.squads[currentFixture.homeClubId] ?? getOfflineSquad(currentFixture.homeClubId)) : [];
+  const awaySquad = currentFixture ? (store.squads[currentFixture.awayClubId] ?? getOfflineSquad(currentFixture.awayClubId)) : [];
   const isUserHome = currentFixture ? currentFixture.homeClubId === selectedClubId : false;
   const isUserAway = currentFixture ? currentFixture.awayClubId === selectedClubId : false;
 
@@ -84,7 +87,7 @@ export default function MatchSimulationPage() {
     engineRef.current = engine;
 
     // Initialize with squads and tactics - properly typed
-    const homeInstructions: TeamInstructions = {
+    let homeInstructions: TeamInstructions = {
       formation: (homeClub?.coach === 'Pep Guardiola' ? '4-3-3' : '4-4-2') as any,
       pressingIntensity: 'high',
       pressingTrigger: 'aggressive',
@@ -103,7 +106,7 @@ export default function MatchSimulationPage() {
       tackleHarder: false,
     };
 
-    const awayInstructions: TeamInstructions = {
+    let awayInstructions: TeamInstructions = {
       formation: (awayClub?.coach === 'Diego Simeone' ? '5-3-2' : '4-3-3') as any,
       pressingIntensity: 'medium',
       pressingTrigger: 'standard',
@@ -121,6 +124,9 @@ export default function MatchSimulationPage() {
       stayOnFeet: true,
       tackleHarder: false,
     };
+
+    if (isUserHome) homeInstructions = careerTeamInstructions(tactics, homeInstructions);
+    if (isUserAway) awayInstructions = careerTeamInstructions(tactics, awayInstructions);
 
     engine.initializeMatch(
       currentFixture.homeClubId,
@@ -159,14 +165,8 @@ export default function MatchSimulationPage() {
         setCommentary(prev => [...prev.slice(-4), event.commentary!]);
       }
 
-      // Update scores
+      // Presentation reacts to goals; the engine remains the score authority.
       if (event.type === 'goal') {
-        const isHomeGoal = event.teamId === currentFixture.homeClubId;
-        if (isHomeGoal) {
-          setHomeScore(s => { homeScoreRef.current = s + 1; return s + 1; });
-        } else {
-          setAwayScore(s => { awayScoreRef.current = s + 1; return s + 1; });
-        }
         playSfx('goal');
       }
     });
@@ -188,6 +188,8 @@ export default function MatchSimulationPage() {
         const state = engineRef.current.getState();
         setMatchState(state);
         setMatchTime(state.currentTime);
+        setHomeScore(state.homeScore ?? 0);
+        setAwayScore(state.awayScore ?? 0);
         setPossession(state.stats.possession);
 
         const phase = engineRef.current.getPhaseState();
@@ -203,10 +205,10 @@ export default function MatchSimulationPage() {
           setIsPaused(false);
           playSfx('whistle');
 
-          // Record result using ref values (not stale closure)
+          // Commit the engine score rather than renderer callback counters.
           if (currentFixture) {
             matchRecordedRef.current = true;
-            store.recordMatchResult(currentFixture.id, homeScoreRef.current, awayScoreRef.current);
+            store.recordMatchResult(currentFixture.id, state.homeScore ?? 0, state.awayScore ?? 0);
           }
         }
       }
@@ -219,14 +221,11 @@ export default function MatchSimulationPage() {
 
   // Speed control
   useEffect(() => {
-    if (engineRef.current) {
-      // Engine speed is set via config, would need restart for instant
-      // For now, we control UI update frequency
-    }
-  }, [matchSpeed]);
+    engineRef.current?.setMatchSpeed(matchSpeed);
+  }, [matchSpeed, currentFixture]);
 
   const handlePlay = useCallback(() => {
-    if (!engineRef.current) return;
+    if (!engineRef.current || engineRef.current.getState().isFullTime) return;
 
     if (isPaused) {
       engineRef.current.resume();
@@ -234,8 +233,6 @@ export default function MatchSimulationPage() {
       setIsPlaying(true);
     } else if (!isPlaying) {
       matchRecordedRef.current = false;
-      homeScoreRef.current = 0;
-      awayScoreRef.current = 0;
       engineRef.current.start();
       setIsPlaying(true);
       setIsPaused(false);
@@ -339,7 +336,7 @@ export default function MatchSimulationPage() {
           <div className="text-center">
             <span className="text-xl font-mono font-bold tabular-nums">{formatTime(matchTime)}</span>
             <span className="text-xs text-tertiary-c block">
-              {matchTime < 45 * 60 ? '1st Half' : matchTime < 90 * 60 ? '2nd Half' : 'FT'}
+              {matchState?.isFullTime ? 'Full time · Saved' : matchState?.isHalfTime ? 'Half time' : matchTime < 45 * 60 ? '1st Half' : '2nd Half'}
             </span>
           </div>
 
@@ -408,7 +405,8 @@ export default function MatchSimulationPage() {
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 glass px-4 py-2 rounded-full">
             <button
               onClick={handlePlay}
-              disabled={isPlaying && !isPaused}
+              aria-label={isPaused ? 'Resume match' : 'Start match'}
+              disabled={Boolean(matchState?.isFullTime) || (isPlaying && !isPaused)}
               className={cn(
                 "p-2 rounded-full transition-all",
                 isPlaying && !isPaused ? "bg-surface-3 text-tertiary-c" : "bg-gold-300 text-surface-base hover:bg-gold-200"
@@ -419,6 +417,7 @@ export default function MatchSimulationPage() {
 
             <button
               onClick={handlePause}
+              aria-label="Pause match"
               disabled={!isPlaying || isPaused}
               className={cn(
                 "p-2 rounded-full transition-all",

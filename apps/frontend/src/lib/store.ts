@@ -14,6 +14,8 @@ import {
   DEFAULT_TACTICS,
   createFreshStandings,
   createUserFixtures,
+  createLeagueFixtures,
+  advanceLeagueCalendar,
   initializeAllSquads,
   initializeClubBudgets,
   applyResultToStandings,
@@ -214,6 +216,8 @@ interface AppState {
   leagueStandings: Record<number, LeagueStanding[]>;
   fixtures: CareerFixture[];
   matchHistory: MatchHistoryEntry[];
+  completedRoundWeeks: number[];
+  seasonHistory: { season: number; standings: LeagueStanding[] }[];
   squads: Record<number, Player[]>;
   clubBudgets: Record<number, number>;
   tactics: TacticsState;
@@ -249,6 +253,8 @@ const CAREER_DEFAULTS = {
   leagueStandings: {} as Record<number, LeagueStanding[]>,
   fixtures: [] as CareerFixture[],
   matchHistory: [] as MatchHistoryEntry[],
+  completedRoundWeeks: [] as number[],
+  seasonHistory: [] as { season: number; standings: LeagueStanding[] }[],
   squads: {} as Record<number, Player[]>,
   clubBudgets: {} as Record<number, number>,
   tactics: DEFAULT_TACTICS,
@@ -352,6 +358,8 @@ export const useAppStore = create<AppState>()(
           leagueStandings: { [leagueId]: createFreshStandings(leagueId) },
           fixtures,
           matchHistory: [],
+          completedRoundWeeks: [],
+          seasonHistory: [],
           squads: initializeAllSquads(),
           clubBudgets: initializeClubBudgets(),
           tactics: { ...DEFAULT_TACTICS, formation: get().managerFormation || '4-3-3' },
@@ -390,11 +398,18 @@ export const useAppStore = create<AppState>()(
 
         const fixture = state.fixtures.find((f) => f.id === fixtureId);
         if (!fixture || fixture.status === 'finished') return;
+        if (![homeScore, awayScore].every(s => Number.isSafeInteger(s) && s >= 0)) return;
+        if (getNextUserFixture(state.fixtures, clubId)?.id !== fixtureId) return;
 
         const leagueId = club.leagueId || 1;
         let standings = state.leagueStandings[leagueId] ?? createFreshStandings(leagueId);
-        const backgroundMatches = simulateBackgroundMatches(leagueId, fixture.week, clubId, state.fixtures);
-        for (const match of backgroundMatches) {
+        const updatedFixtures = markFixturePlayed(state.fixtures, fixtureId, homeScore, awayScore);
+        const calendar = advanceLeagueCalendar({ leagueId, clubId, fixtures: updatedFixtures,
+          throughDate: fixture.matchDate, completedWeeks: state.completedRoundWeeks, standings });
+        standings = calendar.standings;
+        const backgroundMatches = fixture.calendarVersion === 2 ? calendar.results :
+          simulateBackgroundMatches(leagueId, fixture.week, clubId, state.fixtures);
+        for (const match of fixture.calendarVersion === 2 ? [] : backgroundMatches) {
           standings = applyResultToStandings(
             standings,
             match.homeClubId,
@@ -412,7 +427,6 @@ export const useAppStore = create<AppState>()(
           awayScore,
         );
 
-        const updatedFixtures = markFixturePlayed(state.fixtures, fixtureId, homeScore, awayScore);
         const userParticipated =
           fixture.homeClubId === clubId || fixture.awayClubId === clubId;
 
@@ -481,7 +495,6 @@ export const useAppStore = create<AppState>()(
         }
 
         const playedWeek = fixture.week;
-        const shouldAdvanceWeek = userParticipated && playedWeek === state.currentWeek;
         const nextDate = addDays(fixture.matchDate || state.currentDate, 1);
         const promotedFixtures = promoteFixturesForDate(updatedFixtures, nextDate, clubId);
         const nextFixture = getNextUserFixture(promotedFixtures, clubId);
@@ -548,6 +561,7 @@ export const useAppStore = create<AppState>()(
 
         set({
           leagueStandings: { ...state.leagueStandings, [leagueId]: standings },
+          completedRoundWeeks: calendar.completedWeeks,
           fixtures: promotedFixtures,
           matchHistory: [historyEntry, ...state.matchHistory].slice(0, 50),
           nextHistoryId: state.nextHistoryId + 1,
@@ -558,13 +572,14 @@ export const useAppStore = create<AppState>()(
           pressEvents: pressEvents.slice(0, MAX_PRESS_ITEMS),
           nextPressId,
           nextInboxId,
-          currentWeek: shouldAdvanceWeek ? playedWeek + 1 : state.currentWeek,
+          currentWeek: userParticipated ? playedWeek + 1 : state.currentWeek,
           currentDate: nextDate,
           currentPhase: 'post_match',
         });
       },
 
       buyPlayer: (playerId, fromClubId, price) => {
+        if (!Number.isFinite(price) || price <= 0) return false;
         const state = get();
         const clubId = state.selectedClubId;
         if (!clubId || fromClubId === clubId) return false;
@@ -602,6 +617,7 @@ export const useAppStore = create<AppState>()(
       },
 
       sellPlayer: (playerId, price) => {
+        if (!Number.isFinite(price) || price <= 0) return false;
         const state = get();
         const clubId = state.selectedClubId;
         if (!clubId) return false;
@@ -644,6 +660,33 @@ export const useAppStore = create<AppState>()(
         const currentFixtures = promoteFixturesForDate(state.fixtures, activeDate, clubId);
         const nextFixture = getNextUserFixture(currentFixtures, clubId);
 
+        const leagueId = club.leagueId || 1;
+        const calendar = advanceLeagueCalendar({ leagueId, clubId, fixtures: currentFixtures,
+          throughDate: nextDate, completedWeeks: state.completedRoundWeeks,
+          standings: state.leagueStandings[leagueId] ?? createFreshStandings(leagueId) });
+        const schedule = createLeagueFixtures(leagueId, state.currentSeason);
+        const seasonEnd = currentFixtures[0]?.calendarVersion === 2
+          ? schedule[schedule.length - 1]?.matchDate
+          : currentFixtures[currentFixtures.length - 1]?.matchDate;
+
+        if (!nextFixture && seasonEnd && nextDate > seasonEnd && state.currentPhase !== 'post_match') {
+          const nextSeason = state.currentSeason + 1;
+          const fixtures = createUserFixtures(clubId, nextSeason);
+          const date = getCareerStartDate(fixtures);
+          const position = calendar.standings.findIndex(row => row.clubId === clubId) + 1;
+          set({
+            currentSeason: nextSeason, currentWeek: 1, currentDate: date, currentPhase: 'normal_day',
+            fixtures, completedRoundWeeks: [],
+            seasonHistory: [...state.seasonHistory, { season: state.currentSeason, standings: calendar.standings }],
+            leagueStandings: { ...state.leagueStandings, [leagueId]: createFreshStandings(leagueId) },
+            inbox: pushInbox(inbox, createInboxItem(nextInboxId, 'A New Season',
+              `${club.name} finished ${position} of ${calendar.standings.length}. The final table is saved in Career. Season ${nextSeason} fixtures are ready; your squad, budget and tactics carry forward.`,
+              'board', 'high', date, { actionLabel: 'Review Career', actionPath: '/career' })),
+            nextInboxId: nextInboxId + 1,
+          });
+          return;
+        }
+
         if (nextFixture && nextFixture.matchDate <= activeDate) {
           set({
             fixtures: promoteFixturesForDate(state.fixtures, activeDate, clubId),
@@ -685,8 +728,8 @@ export const useAppStore = create<AppState>()(
             inbox,
             createInboxItem(
               nextInboxId++,
-              'Season Checkpoint',
-              `There is no scheduled fixture in the queue right now. The backroom staff are waiting for the next calendar update.`,
+              'Season Run-In',
+              `Your fixtures are complete. The remaining league rounds are being settled before the new season begins.`,
               'board',
               'medium',
               nextDate,
@@ -769,6 +812,8 @@ export const useAppStore = create<AppState>()(
 
         set({
           currentDate: nextDate,
+          completedRoundWeeks: calendar.completedWeeks,
+          leagueStandings: { ...state.leagueStandings, [leagueId]: calendar.standings },
           currentPhase,
           fixtures: promoteFixturesForDate(state.fixtures, nextDate, clubId),
           squadMorale,
@@ -838,6 +883,8 @@ export const useAppStore = create<AppState>()(
         leagueStandings: state.leagueStandings,
         fixtures: state.fixtures,
         matchHistory: state.matchHistory,
+        completedRoundWeeks: state.completedRoundWeeks,
+        seasonHistory: state.seasonHistory,
         squads: state.squads,
         clubBudgets: state.clubBudgets,
         tactics: state.tactics,

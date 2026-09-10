@@ -873,10 +873,11 @@ export class SimulationEngine {
   }
 
   start(): void {
-    if (this.isRunning) return;
+    if (this.isRunning || this.state.isFullTime) return;
     this.isRunning = true;
     this.state.isRunning = true;
     this.state.isPaused = false;
+    this.state.isHalfTime = false;
     this.lastTime = performance.now();
     this.runSimulationLoop();
   }
@@ -893,10 +894,13 @@ export class SimulationEngine {
 
   resume(): void {
     if (this.state.isPaused) {
-      this.state.isPaused = false;
-      this.lastTime = performance.now();
-      this.runSimulationLoop();
+      this.start();
     }
+  }
+
+  setMatchSpeed(speed: SimulationConfig['matchSpeed']): void {
+    if (!['slow', 'normal', 'fast', 'instant'].includes(speed)) throw new Error('Unsupported match speed');
+    this.config.matchSpeed = speed;
   }
 
   stop(): void {
@@ -941,7 +945,7 @@ export class SimulationEngine {
       this.phaseState = updatePhaseState(this.phaseState, lastEvent, homeTeam, awayTeam, this.state.currentTime);
     }
 
-    this.animationFrame = requestAnimationFrame(() => this.runSimulationLoop());
+    if (this.isRunning) this.animationFrame = requestAnimationFrame(() => this.runSimulationLoop());
   }
 
   private processIntelligentDecisions(delta: number): void {
@@ -965,7 +969,7 @@ export class SimulationEngine {
         const attributes = this.playerAttributes.get(player.id);
         if (!attributes) return;
 
-        const scoreDiff = (this.state as any).homeScore || 0 - (this.state as any).awayScore || 0;
+        const scoreDiff = (this.state.homeScore ?? 0) - (this.state.awayScore ?? 0);
         const isHome = teamId === (this.homeSquad[0]?.clubId || 1);
         const adjustedScoreDiff = isHome ? scoreDiff : -scoreDiff;
 
@@ -1309,17 +1313,18 @@ export class SimulationEngine {
 
   private updateMatchTime(delta: number): void {
     const timeIncrease = (delta / 1000) * this.getSpeedMultiplier();
-    this.state.currentTime += timeIncrease;
-
-    if (this.state.currentTime >= MATCH_CONSTANTS.FIRST_HALF_DURATION &&
-        this.state.currentTime - timeIncrease < MATCH_CONSTANTS.FIRST_HALF_DURATION) {
+    const nextTime = this.state.currentTime + timeIncrease;
+    if (this.state.currentTime < MATCH_CONSTANTS.FIRST_HALF_DURATION && nextTime >= MATCH_CONSTANTS.FIRST_HALF_DURATION) {
+      this.state.currentTime = MATCH_CONSTANTS.FIRST_HALF_DURATION;
       this.triggerHalfTime();
+      return;
     }
-
-    if (this.state.currentTime >= MATCH_CONSTANTS.MATCH_DURATION &&
-        this.state.currentTime - timeIncrease < MATCH_CONSTANTS.MATCH_DURATION) {
+    if (nextTime >= MATCH_CONSTANTS.MATCH_DURATION) {
+      this.state.currentTime = MATCH_CONSTANTS.MATCH_DURATION;
       this.triggerFullTime();
+      return;
     }
+    this.state.currentTime = nextTime;
   }
 
   private getSpeedMultiplier(): number {

@@ -15,7 +15,9 @@ import {
   type MatchFlowPhase,
   type MatchPlayState,
   type MatchVector3,
+  type FootballDecisionTrace,
 } from '../protocol';
+import { planTeamMovement, type CoordinatedMovement } from './team-coordination';
 import {
   CAUSAL_SCORING_LIMITS,
   adjudicateGoalLine,
@@ -100,6 +102,7 @@ interface MutableActorState {
   stamina: number;
   intent: MatchActorIntent | null;
   pressure: number;
+  footballDecision?: FootballDecisionTrace;
   targetActorId?: EntityId;
 }
 
@@ -259,6 +262,10 @@ export class SeededKickoffSimulation {
   private possessionPlayerId: EntityId | null;
   private possessionTeamId: EntityId;
   private possessionSinceTick = 0;
+  private lastObservedPossessionTeamId: EntityId | null = null;
+  private lastTurnoverTick = -1000000;
+  private nextTeamPlanTick = 0;
+  private coordinatedMovement = new Map<EntityId, CoordinatedMovement>();
   private homeScore = 0;
   private awayScore = 0;
   private playState: MatchPlayState = 'ready';
@@ -268,7 +275,9 @@ export class SeededKickoffSimulation {
 
   constructor(manifest: MatchManifest) {
     assertValidMatchManifest(manifest);
-    this.manifest = manifest;
+    // Own the inputs: editing a UI tactics object must not mutate a running replay.
+    this.manifest = JSON.parse(JSON.stringify(manifest)) as MatchManifest;
+    manifest = this.manifest;
     this.assignments = createFormationAssignments(manifest);
     // Preserve the manifest's public serialization order. Fairness comparisons
     // canonicalize actor arrays, while every football calculation remains
@@ -474,8 +483,8 @@ export class SeededKickoffSimulation {
             : referee
               ? SPATIAL_SIMULATION_LIMITS.refereeMaxSpeedMps
               : goalkeeper
-                ? SPATIAL_SIMULATION_LIMITS.goalkeeperMaxSpeedMps
-                : SPATIAL_SIMULATION_LIMITS.outfieldMaxSpeedMps,
+                ? SPATIAL_SIMULATION_LIMITS.goalkeeperMaxSpeedMps * (participant.attributes ? 0.65 + (participant.attributes.pace ?? 65) * 0.0035 : 1)
+                : SPATIAL_SIMULATION_LIMITS.outfieldMaxSpeedMps * (participant.attributes ? 0.65 + (participant.attributes.pace ?? 65) * 0.0035 : 1),
         maxAccelerationMps2: fourthOfficial
           ? 0
           : assistant
@@ -483,8 +492,8 @@ export class SeededKickoffSimulation {
             : referee
               ? SPATIAL_SIMULATION_LIMITS.refereeMaxAccelerationMps2
               : goalkeeper
-                ? SPATIAL_SIMULATION_LIMITS.goalkeeperMaxAccelerationMps2
-                : SPATIAL_SIMULATION_LIMITS.outfieldMaxAccelerationMps2,
+                ? SPATIAL_SIMULATION_LIMITS.goalkeeperMaxAccelerationMps2 * (participant.attributes ? 0.6 + (participant.attributes.acceleration ?? 65) * 0.004 : 1)
+                : SPATIAL_SIMULATION_LIMITS.outfieldMaxAccelerationMps2 * (participant.attributes ? 0.6 + (participant.attributes.acceleration ?? 65) * 0.004 : 1),
         position,
         velocity: { x: 0, y: 0, z: 0 },
         target: cloneVector(position),
@@ -623,6 +632,7 @@ export class SeededKickoffSimulation {
       position: actor.position,
       velocity: actor.velocity,
       stamina: actor.stamina,
+      attributes: actor.participant.attributes,
     };
   }
 
@@ -851,6 +861,7 @@ export class SeededKickoffSimulation {
       opponents,
       this.attackDirection(passer.teamId),
       this.manifest.pitch,
+      this.teamManifest(passer.teamId).tactics,
     );
     if (evaluations.length === 0) return null;
 
@@ -1058,7 +1069,12 @@ export class SeededKickoffSimulation {
     const shooter = this.requireActor(plan.shooterId);
     const goalkeeper = this.requireActor(plan.goalkeeperId);
     const role = shooter.participant.role as PlayerRole;
-    const ratings = this.shotExecutionRatings(role);
+    const roleRatings = this.shotExecutionRatings(role);
+    const ratings = {
+      finishing: shooter.participant.attributes?.finishing ?? roleRatings.finishing,
+      technique: shooter.participant.attributes?.technique ?? roleRatings.technique,
+      composure: shooter.participant.attributes?.composure ?? roleRatings.composure,
+    };
     const contact = createShotContact({
       attackDirection: this.attackDirection(plan.shootingTeamId),
       ballPosition: this.ball.position,
@@ -1078,10 +1094,10 @@ export class SeededKickoffSimulation {
       attackDirection: this.attackDirection(plan.shootingTeamId),
       goalkeeperPosition: goalkeeper.position,
       attributes: {
-        anticipation: 72,
-        reflexes: 74,
-        agility: 71,
-        handling: 70,
+        anticipation: goalkeeper.participant.attributes?.anticipation ?? 72,
+        reflexes: goalkeeper.participant.attributes?.reflexes ?? 74,
+        agility: goalkeeper.participant.attributes?.agility ?? 71,
+        handling: goalkeeper.participant.attributes?.handling ?? 70,
       },
       lineOfSight: clamp(1 - plan.opportunity.laneObstruction * 0.65, 0, 1),
       fatigue: clamp(1 - goalkeeper.stamina / 100, 0, 1),
@@ -1241,6 +1257,27 @@ export class SeededKickoffSimulation {
     const { lengthM, widthM } = this.manifest.pitch;
     const kickoffSettled = this.tick >= this.passPlans[0].releaseTick;
     const allPlayers = this.playerSnapshots();
+    const possessionChanged = this.lastObservedPossessionTeamId !== null &&
+      this.lastObservedPossessionTeamId !== this.possessionTeamId;
+    if (possessionChanged) this.lastTurnoverTick = this.tick;
+    this.lastObservedPossessionTeamId = this.possessionTeamId;
+    if (this.tick >= OPEN_PLAY_START_TICK && (possessionChanged || this.tick >= this.nextTeamPlanTick)) {
+      this.coordinatedMovement = new Map();
+      for (const team of [this.manifest.home, this.manifest.away]) {
+        if (!team.tactics) continue;
+        const plan = planTeamMovement({
+          teamId: team.teamId, attackDirection: this.attackDirection(team.teamId),
+          pitch: this.manifest.pitch, assignments: [...this.assignments.values()],
+          players: allPlayers, ball: this.ball.position, ballOwnerId: this.ball.ownerId,
+          possessionTeamId: this.possessionTeamId, ticksSinceTurnover: this.tick - this.lastTurnoverTick,
+          tick: this.tick, tickRateHz: this.manifest.tickRateHz, tactics: team.tactics,
+        });
+        for (const [id, movement] of plan) this.coordinatedMovement.set(id, movement);
+      }
+      // Brief commitment avoids changing every player's responsibility at 20 Hz.
+      // A turnover invalidates this immediately, using the next tick-start world.
+      this.nextTeamPlanTick = this.tick + Math.max(1, this.secondsToTicks(0.25));
+    }
     const pressureTargetPosition = this.activePass?.targetPosition ?? this.ball.position;
     const defendingPlayers = allPlayers
       .filter(player => player.teamId !== this.possessionTeamId && player.role !== 'GK')
@@ -1279,6 +1316,9 @@ export class SeededKickoffSimulation {
           })
         : cloneVector(assignment.basePosition);
       actor.target = cloneVector(shapeTarget);
+      const coordinated = this.coordinatedMovement.get(actor.participant.id);
+      actor.footballDecision = coordinated?.trace;
+      if (coordinated) actor.target = cloneVector(coordinated.target);
 
       if (this.pendingShot?.shooterId === actor.participant.id) {
         actor.target = cloneVector(actor.position);
@@ -1388,7 +1428,7 @@ export class SeededKickoffSimulation {
         continue;
       }
 
-      if (this.activePass && interceptionId === actor.participant.id) {
+      if (this.activePass && interceptionId === actor.participant.id && !coordinated) {
         actor.target = {
           x: clamp(this.ball.position.x, 1, lengthM - 1),
           y: clamp(this.ball.position.y, 1, widthM - 1),
@@ -1427,6 +1467,11 @@ export class SeededKickoffSimulation {
           reason: nearest.value > 0.55 ? 'escape_local_pressure' : 'advance_with_control',
           targetPosition: actor.target,
         });
+        continue;
+      }
+
+      if (coordinated) {
+        this.setIntent(actor, coordinated.intent);
         continue;
       }
 
@@ -1591,8 +1636,9 @@ export class SeededKickoffSimulation {
     };
     const distance = magnitude2D(displacement);
     const brakingSpeed = Math.sqrt(2 * actor.maxAccelerationMps2 * distance);
+    const effort = actor.footballDecision ? 0.55 + (actor.intent?.urgency ?? 0.6) * 0.45 : 1;
     const effectiveMaxSpeed = actor.maxSpeedMps * (0.78 + snapshot.stamina / 100 * 0.22);
-    const desiredSpeed = Math.min(effectiveMaxSpeed, brakingSpeed);
+    const desiredSpeed = Math.min(effectiveMaxSpeed * effort, brakingSpeed);
     let desiredVelocity: MatchVector3 = distance > 0.0001
       ? {
           x: displacement.x / distance * desiredSpeed,
@@ -1659,7 +1705,10 @@ export class SeededKickoffSimulation {
       velocity: nextVelocity,
       yaw,
       locomotion: locomotionForSpeed(speed),
-      stamina: Math.max(0, snapshot.stamina - speed * deltaSeconds * 0.0008),
+      stamina: actor.participant.attributes
+        ? clamp(snapshot.stamina + deltaSeconds * (speed < 1.8 ? 0.015 :
+          -0.009 * Math.pow(speed / 4, 2) * (1.6 - (actor.participant.attributes.endurance ?? 65) / 100)), 0, 100)
+        : Math.max(0, snapshot.stamina - speed * deltaSeconds * 0.0008),
     };
   }
 
@@ -1780,7 +1829,8 @@ export class SeededKickoffSimulation {
     this.activePass = null;
     this.nextDecisionTick = Math.max(
       OPEN_PLAY_START_TICK + 1,
-      this.tick + this.secondsToTicks(0.75) + this.semanticInteger({
+      this.tick + this.secondsToTicks(this.teamManifest(passingTeamId).tactics
+        ? 1.2 - this.teamManifest(passingTeamId).tactics!.tempo * 0.009 : 0.75) + this.semanticInteger({
         namespace: 'team.decision.schedule',
         period: 'first_half',
         tick: this.tick,
@@ -2161,6 +2211,7 @@ export class SeededKickoffSimulation {
             }
           : null,
         pressure: actor.pressure,
+        ...(actor.footballDecision ? { footballDecision: actor.footballDecision } : {}),
         targetActorId: actor.targetActorId,
       };
     });

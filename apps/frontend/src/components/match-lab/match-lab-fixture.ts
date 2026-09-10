@@ -3,6 +3,8 @@ import {
   DEFAULT_MATCH_TICK_RATE_HZ,
   MATCH_PROTOCOL_VERSION,
   REGULATION_PITCH,
+  DEFAULT_FOOTBALL_TACTICS,
+  DEFAULT_FOOTBALL_ATTRIBUTES,
   type MatchManifest,
   type MatchParticipant,
 } from '@tactico/simulation-engine/protocol';
@@ -39,6 +41,14 @@ const createPlayer = (
   displayName: name,
   role,
   shirtNumber: index + 1,
+  attributes: {
+    ...DEFAULT_FOOTBALL_ATTRIBUTES,
+    pace: role === 'GK' ? 48 : 58 + (index * 7) % 32,
+    acceleration: 55 + (index * 11) % 35,
+    endurance: 60 + (index * 3) % 30,
+    passing: ['CDM', 'LCM', 'RCM', 'LDM', 'RDM', 'CAM'].includes(role) ? 82 : 65,
+    finishing: role === 'ST' ? 84 : ['LW', 'RW', 'AML', 'AMR'].includes(role) ? 76 : 48,
+  },
 });
 
 export function createMatchLabManifest(seed = MATCH_LAB_SEED): MatchManifest {
@@ -58,12 +68,14 @@ export function createMatchLabManifest(seed = MATCH_LAB_SEED): MatchManifest {
       formation: '4-3-3',
       attacksPositiveXFirstHalf: true,
       startingPlayerIds: homePlayers.map(player => player.id),
+      tactics: { ...DEFAULT_FOOTBALL_TACTICS, width: 65, pressing: 65, tempo: 60 },
     },
     away: {
       teamId: 'away',
       formation: '4-2-3-1',
       attacksPositiveXFirstHalf: false,
       startingPlayerIds: awayPlayers.map(player => player.id),
+      tactics: { ...DEFAULT_FOOTBALL_TACTICS, defensiveLine: 35, pressing: 35, directness: 70, counterattack: true },
     },
     participants: [
       ...homePlayers,
