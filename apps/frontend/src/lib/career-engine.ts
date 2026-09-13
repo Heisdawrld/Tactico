@@ -5,6 +5,8 @@
 
 import type { Player } from '@/types/player';
 import type { Club } from '@/types/club';
+import { createRoundRobin } from './league-calendar';
+import { sampleSemanticRandom } from '@tactico/simulation-engine/spatial';
 import {
   OFFLINE_CLUBS,
   getOfflineClub,
@@ -28,6 +30,9 @@ export interface CareerFixture {
   matchDate: string;
   competition: string;
   week: number;
+  /** Absent on the original eight-fixture saves; upgraded at the next season. */
+  calendarVersion?: 2;
+  season?: number;
 }
 
 export interface LeagueStanding {
@@ -105,33 +110,28 @@ export function createFreshStandings(leagueId: number): LeagueStanding[] {
   }));
 }
 
-export function createUserFixtures(clubId: number): CareerFixture[] {
+export function createLeagueFixtures(leagueId: number, season = 1): CareerFixture[] {
+  if (!Number.isSafeInteger(season) || season < 1 || season > 7000) throw new Error('Invalid season');
+  const clubs = OFFLINE_CLUBS.filter(c => c.leagueId === leagueId);
+  if (clubs.length < 2) return [];
+  const seasonStart = new Date(Date.UTC(2025 + season, 7, 16, 12));
+  return createRoundRobin(clubs.map(c => c.id)).map((pair, index) => {
+    const date = new Date(seasonStart);
+    date.setUTCDate(date.getUTCDate() + (pair.week - 1) * 7);
+    return {
+      ...pair, id: (season - 1) * 100000 + leagueId * 1000 + index + 1,
+      homeScore: null, awayScore: null, status: 'scheduled',
+      matchDate: date.toISOString().slice(0, 10), competition: clubs[0].league,
+      calendarVersion: 2, season,
+    };
+  });
+}
+
+export function createUserFixtures(clubId: number, season = 1): CareerFixture[] {
   const club = getOfflineClub(clubId);
   if (!club) return [];
-
-  const leagueClubs = OFFLINE_CLUBS.filter((c) => c.league === club.league && c.id !== clubId);
-  const fixtures: CareerFixture[] = [];
-  let id = 1;
-  const seasonStart = new Date('2026-08-16T12:00:00Z');
-
-  for (let week = 1; week <= 8; week++) {
-    const opp = leagueClubs[(week - 1) % leagueClubs.length];
-    const isHome = week % 2 === 1;
-    const matchDate = new Date(seasonStart);
-    matchDate.setUTCDate(seasonStart.getUTCDate() + (week - 1) * 7);
-    fixtures.push({
-      id: id++,
-      homeClubId: isHome ? clubId : opp.id,
-      awayClubId: isHome ? opp.id : clubId,
-      homeScore: null,
-      awayScore: null,
-      status: 'scheduled',
-      matchDate: matchDate.toISOString().slice(0, 10),
-      competition: club.league,
-      week,
-    });
-  }
-  return fixtures;
+  return createLeagueFixtures(club.leagueId || 1, season)
+    .filter(f => f.homeClubId === clubId || f.awayClubId === clubId);
 }
 
 export function initializeAllSquads(): Record<number, Player[]> {
@@ -218,31 +218,25 @@ function clubStrength(club: Club): number {
   return club.reputation + (club.leagueReputation ?? 0) * 0.3;
 }
 
-export function simulateMatchScore(homeClub: Club, awayClub: Club): { home: number; away: number } {
-  const homeStr = clubStrength(homeClub) + 5; // home advantage
-  const awayStr = clubStrength(awayClub);
-  const total = homeStr + awayStr;
-  const homeWinProb = homeStr / total;
-
-  const roll = Math.random();
-  let home: number;
-  let away: number;
-
-  if (roll < homeWinProb * 0.55) {
-    home = randInt(1, 3);
-    away = randInt(0, home - 1);
-  } else if (roll < homeWinProb * 0.55 + 0.25) {
-    home = randInt(0, 2);
-    away = home;
-  } else {
-    away = randInt(1, 3);
-    home = randInt(0, away - 1);
-  }
-  return { home, away };
-}
-
-function randInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+/** Background approximation pending integration of the full spatial match engine.
+ * Each club's goals are sampled independently; no winner or required score is chosen.
+ */
+export function simulateMatchScore(homeClub: Club, awayClub: Club, fixtureKey = 'exhibition', season = 1): { home: number; away: number } {
+  const strengthDifference = (clubStrength(homeClub) - clubStrength(awayClub)) / 40;
+  const goals = (clubId: number, mean: number) => {
+    const sample = sampleSemanticRandom({ matchSeed: 20260816 + season,
+      namespace: 'career.background.goals', period: 'full_time', tick: 0,
+      decisionId: fixtureKey, actorIds: [clubId], sampleKind: 'poisson_goals', sampleIndex: 0 });
+    let probability = Math.exp(-mean), cumulative = probability, count = 0;
+    while (sample > cumulative && count < 20) {
+      count++; probability *= mean / count; cumulative += probability;
+    }
+    return count;
+  };
+  return {
+    home: goals(homeClub.id, Math.max(0.25, Math.min(4, 1.5 + strengthDifference))),
+    away: goals(awayClub.id, Math.max(0.25, Math.min(4, 1.2 - strengthDifference))),
+  };
 }
 
 export interface BackgroundMatch {
@@ -262,6 +256,15 @@ export function simulateBackgroundMatches(
   const clubs = OFFLINE_CLUBS.filter((c) => c.leagueId === leagueId);
   const results: BackgroundMatch[] = [];
 
+  if (userFixtures[0]?.calendarVersion === 2) {
+    const season = userFixtures[0].season ?? 1;
+    return createLeagueFixtures(leagueId, season).filter(f => f.week === week &&
+      f.homeClubId !== userClubId && f.awayClubId !== userClubId).map(f => {
+      const score = simulateMatchScore(getOfflineClub(f.homeClubId)!, getOfflineClub(f.awayClubId)!, String(f.id), season);
+      return { homeClubId: f.homeClubId, awayClubId: f.awayClubId, homeScore: score.home, awayScore: score.away };
+    });
+  }
+
   const userFixture = userFixtures.find(
     (f) => f.week === week && (f.homeClubId === userClubId || f.awayClubId === userClubId),
   );
@@ -270,13 +273,15 @@ export function simulateBackgroundMatches(
     : null;
 
   const available = clubs.filter((c) => c.id !== userClubId && c.id !== userOpponentId);
-  const shuffled = [...available].sort(() => Math.random() - 0.5);
+  const ordered = [...available].sort((a, b) => a.id - b.id);
+  const offset = week % Math.max(1, ordered.length);
+  const shuffled = [...ordered.slice(offset), ...ordered.slice(0, offset)];
 
   for (let i = 0; i < shuffled.length - 1; i += 2) {
     const home = shuffled[i];
     const away = shuffled[i + 1];
     if (!home || !away) continue;
-    const scores = simulateMatchScore(home, away);
+    const scores = simulateMatchScore(home, away, `legacy-${leagueId}-${week}-${home.id}-${away.id}`);
     results.push({
       homeClubId: home.id,
       awayClubId: away.id,
@@ -285,6 +290,32 @@ export function simulateBackgroundMatches(
     });
   }
   return results;
+}
+
+/** Commit only completed rounds, including bye weeks, exactly once. User scores
+ * are committed by recordMatchResult; this function handles the other fixtures.
+ */
+export function advanceLeagueCalendar(input: {
+  leagueId: number; clubId: number; fixtures: CareerFixture[]; throughDate: string;
+  completedWeeks: number[]; standings: LeagueStanding[];
+}): { completedWeeks: number[]; standings: LeagueStanding[]; results: BackgroundMatch[] } {
+  const { leagueId, clubId, fixtures, throughDate } = input;
+  const completedWeeks = new Set(input.completedWeeks);
+  let standings = input.standings;
+  const results: BackgroundMatch[] = [];
+  if (fixtures[0]?.calendarVersion !== 2) return { completedWeeks: [...completedWeeks], standings, results };
+  const schedule = createLeagueFixtures(leagueId, fixtures[0].season ?? 1);
+  const dueWeeks = [...new Set(schedule.filter(f => f.matchDate <= throughDate).map(f => f.week))];
+  for (const week of dueWeeks) {
+    if (completedWeeks.has(week)) continue;
+    if (fixtures.some(f => f.week === week && f.status !== 'finished')) break;
+    const matches = simulateBackgroundMatches(leagueId, week, clubId, fixtures);
+    for (const match of matches) standings = applyResultToStandings(standings,
+      match.homeClubId, match.awayClubId, match.homeScore, match.awayScore);
+    completedWeeks.add(week);
+    results.push(...matches);
+  }
+  return { completedWeeks: [...completedWeeks].sort((a, b) => a - b), standings, results };
 }
 
 // ============================================================

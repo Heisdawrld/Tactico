@@ -11,6 +11,8 @@ import type { EntityId, Formation, PlayerRole } from '../core/types';
  * - yaw: radians on the pitch plane, with 0 facing +x
  */
 
+import type { FootballAttributes, FootballDecisionTrace, FootballTactics, RoleInstructions } from './football-tactics';
+
 export const MATCH_PROTOCOL_VERSION = 1 as const;
 export const DEFAULT_MATCH_TICK_RATE_HZ = 20 as const;
 export const REGULATION_PITCH = Object.freeze({ lengthM: 105, widthM: 68 });
@@ -47,6 +49,8 @@ export interface MatchParticipant {
   readonly displayName: string;
   readonly role: PlayerRole | MatchOfficialRole;
   readonly shirtNumber?: number;
+  readonly attributes?: Partial<FootballAttributes>;
+  readonly instructions?: RoleInstructions;
 }
 
 export interface MatchTeamManifest {
@@ -55,6 +59,8 @@ export interface MatchTeamManifest {
   readonly attacksPositiveXFirstHalf: boolean;
   /** Ordered matchday XI; substitutes belong in a later squad/bench manifest. */
   readonly startingPlayerIds: readonly EntityId[];
+  /** Absent on legacy diagnostic replays. Present opts into coordinated football. */
+  readonly tactics?: FootballTactics;
 }
 
 export interface MatchManifest {
@@ -170,6 +176,7 @@ export interface MatchActorFrame {
   readonly intent?: MatchActorIntent | null;
   /** Normalized local opponent pressure, from 0 (free) to 1 (immediate). */
   readonly pressure?: number;
+  readonly footballDecision?: FootballDecisionTrace;
   /** @deprecated Prefer intent.targetActorId for renderer-neutral semantics. */
   readonly targetActorId?: EntityId;
 }
@@ -322,12 +329,41 @@ export function validateMatchManifest(manifest: MatchManifest): MatchProtocolIss
     if (participant.kind !== 'player' && participant.teamId !== null) {
       issues.push({ path: `${path}.teamId`, message: 'officials must be neutral' });
     }
+    for (const [key, value] of Object.entries(participant.attributes ?? {})) {
+      if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 100) {
+        issues.push({ path: `${path}.attributes.${key}`, message: 'must be a finite rating from 0 to 100' });
+      }
+    }
+    const instructions = participant.instructions;
+    if (instructions?.duty !== undefined && !['defend', 'support', 'attack'].includes(instructions.duty)) {
+      issues.push({ path: `${path}.instructions.duty`, message: 'must be defend, support or attack' });
+    }
+    if (instructions?.wideMovement !== undefined &&
+        !['hold_width', 'cut_inside', 'overlap', 'underlap'].includes(instructions.wideMovement)) {
+      issues.push({ path: `${path}.instructions.wideMovement`, message: 'must be a supported wide movement' });
+    }
+    if (instructions?.holdPosition !== undefined && typeof instructions.holdPosition !== 'boolean') {
+      issues.push({ path: `${path}.instructions.holdPosition`, message: 'must be a boolean' });
+    }
   });
 
   const participantsById = new Map(
     manifest.participants.map(participant => [participant.id, participant]),
   );
   ([['home', manifest.home], ['away', manifest.away]] as const).forEach(([label, team]) => {
+    if (team.tactics !== undefined) {
+      for (const key of ['width', 'defensiveLine', 'pressing', 'tempo', 'directness'] as const) {
+        const value = team.tactics?.[key];
+        if (!Number.isFinite(value) || value < 0 || value > 100) {
+          issues.push({ path: `${label}.tactics.${key}`, message: 'must be a finite value from 0 to 100' });
+        }
+      }
+      for (const key of ['counterpress', 'counterattack'] as const) {
+        if (typeof team.tactics?.[key] !== 'boolean') {
+          issues.push({ path: `${label}.tactics.${key}`, message: 'must be a boolean' });
+        }
+      }
+    }
     const startingPlayerIds = Array.isArray(team.startingPlayerIds)
       ? team.startingPlayerIds
       : [];

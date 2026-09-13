@@ -1,5 +1,5 @@
 import type { EntityId, PlayerRole } from '../core/types';
-import type { MatchPitchDimensions, MatchVector3 } from '../protocol';
+import type { FootballAttributes, FootballTactics, MatchPitchDimensions, MatchVector3 } from '../protocol';
 
 const clamp = (value: number, minimum: number, maximum: number): number =>
   Math.min(maximum, Math.max(minimum, value));
@@ -14,6 +14,7 @@ export interface FootballerSnapshot {
   readonly position: MatchVector3;
   readonly velocity: MatchVector3;
   readonly stamina: number;
+  readonly attributes?: Partial<FootballAttributes>;
 }
 
 export interface PressureAssessment {
@@ -165,6 +166,7 @@ export function evaluatePassCandidates(
   opponents: readonly FootballerSnapshot[],
   attackDirection: 1 | -1,
   pitch: MatchPitchDimensions,
+  tactics?: FootballTactics,
 ): readonly PassCandidateEvaluation[] {
   return teammates
     .filter(candidate => candidate.id !== passer.id)
@@ -184,15 +186,17 @@ export function evaluatePassCandidates(
         if (projection <= 0.04 || projection >= 0.96 || laneDistance > 5.5) return risk;
         return risk + clamp((5.5 - laneDistance) / 5.5, 0, 1);
       }, 0);
-      const distanceQuality = 1 - clamp(Math.abs(distanceM - 15) / 25, 0, 1);
+      const preferredDistance = tactics ? 7 + tactics.directness * 0.33 : 15;
+      const distanceQuality = 1 - clamp(Math.abs(distanceM - preferredDistance) / 25, 0, 1);
       const completionProbability = clamp(
-        0.97 - distanceM * 0.012 - laneRisk * 0.13 - receiverPressure * 0.18,
+        0.97 - distanceM * 0.012 - laneRisk * 0.13 - receiverPressure * 0.18 +
+          (passer.attributes ? ((passer.attributes.passing ?? 65) - 65) * 0.0025 : 0),
         0.18,
         0.97,
       );
       const switchValue = Math.abs(targetPosition.y - passer.position.y) >= 18 ? 1 : 0;
       const score =
-        progressM * 0.16 +
+        progressM * (tactics ? 0.03 + tactics.directness * 0.0026 : 0.16) +
         distanceQuality * 2.4 +
         completionProbability * 5.2 +
         switchValue * 0.75 -
@@ -218,7 +222,7 @@ export function evaluatePassCandidates(
         reason,
       };
     })
-    .filter(candidate => candidate.distanceM >= 3 && candidate.distanceM <= 38)
+    .filter(candidate => candidate.distanceM >= 3 && candidate.distanceM <= (tactics ? 55 : 38))
     .sort((left, right) =>
       right.score - left.score || String(left.playerId).localeCompare(String(right.playerId)));
 }

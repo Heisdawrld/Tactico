@@ -1,7 +1,7 @@
 'use client'
 
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useAppStore } from '@/lib/store';
 import { useSelectedClub } from '@/lib/useSelectedClub';
@@ -19,6 +19,10 @@ import { Trophy, TrendingUp, Target, ChevronRight, Award, Star } from 'lucide-re
 export default function CareerPage() {
   const { club, hydrated } = useSelectedClub();
   const currentWeek = useAppStore((s) => s.currentWeek);
+  const currentSeason = useAppStore((s) => s.currentSeason);
+  const seasonHistory = useAppStore((s) => s.seasonHistory);
+  const squadMorale = useAppStore((s) => s.squadMorale);
+  const fixtures = useAppStore((s) => s.fixtures);
   const continueGame = useAppStore((s) => s.continueGame);
   const leagueStandings = useAppStore((s) => s.leagueStandings);
   const boardConfidence = useAppStore((s) => s.boardConfidence);
@@ -30,12 +34,13 @@ export default function CareerPage() {
   }, [club, leagueStandings]);
   const myRow = leagueTable.find((r) => club && r.clubId === club.id);
 
-  const [objectives] = useState([
-    { id: 1, label: 'Qualify for Champions League', target: 'Top 4', progress: 75, priority: 'high', deadline: 'End of Season' },
-    { id: 2, label: 'Reach FA Cup Quarterfinal', target: 'QF', progress: 60, priority: 'medium', deadline: 'March' },
-    { id: 3, label: 'Develop Youth Player', target: '1 player to 80+ OVR', progress: 40, priority: 'medium', deadline: 'End of Season' },
-    { id: 4, label: 'Maintain Wage Structure', target: 'Wages < €80M/yr', progress: 90, priority: 'low', deadline: 'Ongoing' },
-  ]);
+  const played = fixtures.filter(f => f.status === 'finished').length;
+  const indicators = [
+    { label: 'Season completed', value: fixtures.length ? Math.round(played / fixtures.length * 100) : 0,
+      detail: `${played} of ${fixtures.length} matches played` },
+    { label: 'Board confidence', value: boardConfidence, detail: 'Changes with your results' },
+    { label: 'Squad morale', value: squadMorale, detail: 'Current dressing-room mood' },
+  ];
 
 
   if (!club) return null;
@@ -46,7 +51,7 @@ export default function CareerPage() {
         <StaggerContainer className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6" stagger={0.05}>
           <StaggerItem>
             <div className="section-header !mb-1">Career Mode</div>
-            <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">Season 2026</h1>
+            <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">Season {2025 + currentSeason}</h1>
             <p className="text-tertiary-c text-sm mt-1">{club!.name} · Week {currentWeek}</p>
           </StaggerItem>
           <StaggerItem>
@@ -74,7 +79,7 @@ export default function CareerPage() {
               </div>
               <div className="mt-3">
                 <Badge variant={myRow && myRow.position <= 4 ? 'gold' : myRow && myRow.position <= 6 ? 'success' : 'default'} size="sm">
-                  {myRow && myRow.position <= 4 ? 'CHAMPIONS LEAGUE' : myRow && myRow.position <= 6 ? 'EUROPA LEAGUE' : 'MID-TABLE'}
+                  {myRow?.played === 0 ? 'SEASON START' : myRow?.position === 1 ? 'LEAGUE LEADERS' : `POSITION ${myRow?.position ?? '—'}`}
                 </Badge>
               </div>
             </CardContent>
@@ -121,7 +126,7 @@ export default function CareerPage() {
         <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center gap-2"><Trophy className="w-4 h-4 text-gold-300" /><CardTitle>{club!.league} Table</CardTitle></div>
-            <CardDescription>Updated through Week {currentWeek}</CardDescription>
+            <CardDescription>{leagueTable.length} clubs in this offline competition · Home and away schedule</CardDescription>
           </CardHeader>
           <CardContent className="!p-0">
             <div className="divide-y divide-white/3">
@@ -154,28 +159,39 @@ export default function CareerPage() {
           </CardContent>
         </Card>
 
-        {/* Board Objectives */}
+        {seasonHistory.length > 0 && <Card className="mb-6">
+          <CardHeader><CardTitle>Season archive</CardTitle><CardDescription>Final tables from your career</CardDescription></CardHeader>
+          <CardContent className="space-y-3">
+            {[...seasonHistory].reverse().map(season => <details key={season.season} className="rounded-lg border border-white/10 p-3">
+              <summary className="cursor-pointer text-sm font-semibold">{2025 + season.season} · Champions: {season.standings[0]?.clubName ?? '—'}</summary>
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead><tr className="text-tertiary-c"><th scope="col">Pos</th><th scope="col">Club</th><th scope="col">P</th><th scope="col">GD</th><th scope="col">Pts</th></tr></thead>
+                  <tbody>{season.standings.map((row, index) => <tr key={row.clubId} className={row.clubId === club.id ? 'text-gold-300' : 'text-primary-c'}>
+                    <td className="py-2">{index + 1}</td><td>{row.clubName}</td><td>{row.played}</td><td>{row.goalDifference}</td><td>{row.points}</td>
+                  </tr>)}</tbody>
+                </table>
+              </div>
+            </details>)}
+          </CardContent>
+        </Card>}
+
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-2"><Target className="w-4 h-4 text-gold-300" /><CardTitle>Season Objectives</CardTitle></div>
-            <CardDescription>Set by the board · Failure may result in sacking</CardDescription>
+            <div className="flex items-center gap-2"><Target className="w-4 h-4 text-gold-300" /><CardTitle>Season progress</CardTitle></div>
+            <CardDescription>From your current career</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {objectives.map((obj) => (
-              <div key={obj.id} className="p-3 rounded-md bg-surface-2/50 border border-white/3">
+            {indicators.map((indicator) => (
+              <div key={indicator.label} className="p-3 rounded-md bg-surface-2/50 border border-white/3">
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-primary-c">{obj.label}</span>
-                      <Badge variant={obj.priority === 'high' ? 'danger' : obj.priority === 'medium' ? 'warning' : 'default'} size="sm">
-                        {obj.priority.toUpperCase()}
-                      </Badge>
-                    </div>
-                    <div className="text-[11px] text-tertiary-c mt-0.5">Target: {obj.target} · Deadline: {obj.deadline}</div>
+                    <span className="text-sm font-medium text-primary-c">{indicator.label}</span>
+                    <div className="text-xs text-tertiary-c mt-1">{indicator.detail}</div>
                   </div>
-                  <span className="text-sm font-mono font-bold text-gold-300 tabular-nums">{obj.progress}%</span>
+                  <span className="text-sm font-mono font-bold text-gold-300 tabular-nums">{indicator.value}%</span>
                 </div>
-                <ProgressBar value={obj.progress} tone={obj.progress >= 75 ? 'success' : obj.progress >= 50 ? 'gold' : 'warning'} />
+                <ProgressBar value={indicator.value} tone={indicator.value >= 75 ? 'success' : indicator.value >= 50 ? 'gold' : 'warning'} />
               </div>
             ))}
           </CardContent>

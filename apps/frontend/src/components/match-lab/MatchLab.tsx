@@ -11,7 +11,6 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Bug,
-  Gauge,
   Pause,
   Play,
   RotateCcw,
@@ -29,9 +28,9 @@ import type {
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import { MatchLabTactics } from './MatchLabTactics';
 import {
   MATCH_LAB_END_TICK,
-  MATCH_LAB_SEED,
   MATCH_LAB_STABLE_END_TICK,
   createMatchLabManifest,
 } from './match-lab-fixture';
@@ -129,7 +128,7 @@ function TruthFact({ label, value }: MetricProps) {
 
 export function MatchLab() {
   const router = useRouter();
-  const manifest = useMemo<MatchManifest>(() => createMatchLabManifest(), []);
+  const [manifest, setManifest] = useState<MatchManifest>(() => createMatchLabManifest());
   const simulationRef = useRef<SeededKickoffSimulation | null>(null);
   if (!simulationRef.current) simulationRef.current = new SeededKickoffSimulation(manifest);
 
@@ -241,8 +240,10 @@ export function MatchLab() {
     setFrame(initialFrame);
     setEvents([]);
     setIsPlaying(false);
-    setSelectedActorId(initialFrame.ball.ownerId);
+    setSelectedActorId(previous => initialFrame.actors.some(actor => actor.id === previous) ? previous : initialFrame.ball.ownerId);
   }, [manifest]);
+
+  useEffect(() => { reset(); }, [reset]);
 
   const stepOnce = useCallback(() => {
     if (isCompleteFrame(frameRef.current)) return;
@@ -299,7 +300,7 @@ export function MatchLab() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) {
+      if (target?.closest('input, textarea, select, button, summary') || target?.isContentEditable) {
         return;
       }
       if (event.code === 'Space') {
@@ -327,22 +328,8 @@ export function MatchLab() {
 
   return (
     <div className="min-h-[100dvh] bg-[#06090e] text-white">
-      <div className="flex min-h-[100dvh] items-center justify-center p-6 lg:hidden">
-        <div className="max-w-md rounded-2xl border border-gold-300/20 bg-surface-2 p-8 text-center shadow-2xl">
-          <Gauge className="mx-auto h-10 w-10 text-gold-300" />
-          <h1 className="mt-5 font-display text-2xl font-bold">PC Match Lab</h1>
-          <p className="mt-3 text-sm leading-6 text-white/60">
-            This diagnostic environment is currently available on desktop screens only.
-            Mobile will receive its dedicated landscape 2D match experience later.
-          </p>
-          <Button className="mt-6" onClick={() => router.push('/matches')} silent variant="outline">
-            <ArrowLeft className="h-4 w-4" /> Return to Matches
-          </Button>
-        </div>
-      </div>
-
-      <div className="hidden h-[100dvh] min-h-[680px] flex-col overflow-hidden lg:flex">
-        <header className="flex h-[68px] shrink-0 items-center justify-between border-b border-white/8 bg-[#090e15]/95 px-4 backdrop-blur-xl">
+      <div className="flex min-h-[100dvh] flex-col lg:h-[100dvh] lg:min-h-[680px] lg:overflow-hidden">
+        <header className="flex min-h-[68px] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-white/8 bg-[#090e15]/95 px-4 py-2 backdrop-blur-xl lg:h-[68px] lg:flex-nowrap">
           <div className="flex min-w-0 items-center gap-3">
             <Button
               aria-label="Return to matches"
@@ -362,7 +349,7 @@ export function MatchLab() {
                 <Badge variant="gold">Deterministic</Badge>
               </div>
               <p className="mt-0.5 hidden text-[10px] font-medium uppercase tracking-[0.12em] text-white/40 xl:block">
-                Movement &amp; causal scoring v1 · PC truth surface
+                Roles · Team instructions · Causal scoring
               </p>
             </div>
           </div>
@@ -384,7 +371,7 @@ export function MatchLab() {
 
           <div className="flex items-center gap-4 text-right">
             <div>
-              <div className="font-mono text-[10px] font-bold text-white/85 xl:text-xs">SEED {MATCH_LAB_SEED}</div>
+              <div className="font-mono text-[10px] font-bold text-white/85 xl:text-xs">SEED {manifest.seed}</div>
               <div className="text-[9px] uppercase tracking-[0.15em] text-white/35">Protocol v{manifest.version}</div>
             </div>
             <Badge variant={isPlaying ? 'success' : isFinished ? 'gold' : 'outline'}>
@@ -393,10 +380,10 @@ export function MatchLab() {
           </div>
         </header>
 
-        <main className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_330px] gap-3 overflow-hidden p-3">
+        <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 lg:grid-cols-[minmax(0,1fr)_330px] lg:overflow-hidden">
           <section className="flex min-h-0 flex-col gap-2" aria-label="Match visualization">
             <div className="shrink-0 overflow-hidden rounded-lg border border-white/7 bg-[#0a1018]">
-              <div className="flex items-center justify-between border-b border-white/6 px-3 py-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/6 px-3 py-1.5">
                 <div className="flex items-center gap-2">
                   <span className="h-2 w-2 rounded-full bg-success shadow-[0_0_10px_rgba(34,197,94,0.7)]" />
                   <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/65">
@@ -445,7 +432,8 @@ export function MatchLab() {
             />
           </section>
 
-          <aside className="flex min-h-0 flex-col gap-3 overflow-hidden" aria-label="Match diagnostics">
+          <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto" aria-label="Match diagnostics">
+            <MatchLabTactics manifest={manifest} onApply={setManifest} selectedPlayer={selectedParticipant} />
             <section className="shrink-0 rounded-xl border border-white/8 bg-[#0a1018] p-3">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/70">Diagnostic Layers</h2>
@@ -509,6 +497,12 @@ export function MatchLab() {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
+                    {selectedActor.footballDecision && <>
+                      <Metric label="Team phase" value={titleCase(selectedActor.footballDecision.phase)} />
+                      <Metric label="Responsibility" value={titleCase(selectedActor.footballDecision.responsibility)} />
+                      <Metric label="Duty" value={selectedActor.footballDecision.duty} />
+                      <Metric label="Forward run" value={selectedActor.footballDecision.forwardRunAllowed ? 'Cover ready' : 'Hold / protect'} />
+                    </>}
                     <Metric label="Intent" value={selectedActor.intent ? titleCase(selectedActor.intent.kind) : 'None'} />
                     <Metric
                       label="Intent Target"
@@ -530,7 +524,7 @@ export function MatchLab() {
               )}
             </section>
 
-            <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-white/8 bg-[#0a1018]">
+            <section className="flex min-h-[240px] shrink-0 flex-col overflow-hidden rounded-xl border border-white/8 bg-[#0a1018]">
               <div className="flex shrink-0 items-center justify-between border-b border-white/7 px-3 py-2.5">
                 <h2 className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/70">Event Delta Stream</h2>
                 <span className="font-mono text-[9px] text-white/35">{events.length} events</span>
@@ -572,7 +566,7 @@ export function MatchLab() {
           </aside>
         </main>
 
-        <footer className="shrink-0 border-t border-white/8 bg-[#090e15] px-4 py-3">
+        <footer className="sticky bottom-0 z-20 shrink-0 border-t border-white/8 bg-[#090e15] px-4 py-3">
           <div className="mb-2 flex items-center gap-3">
             <span className="w-20 font-mono text-[10px] tabular-nums text-white/45">{formatClock(frame.simTimeMs)}</span>
             <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-white/8">
@@ -581,7 +575,7 @@ export function MatchLab() {
             <span className="w-20 text-right font-mono text-[10px] tabular-nums text-white/45">{formatClock(durationMs)}</span>
           </div>
 
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Button aria-label="Reset deterministic tape" onClick={reset} silent size="icon" variant="secondary">
                 <RotateCcw className="h-4 w-4" />
@@ -626,7 +620,7 @@ export function MatchLab() {
               ))}
             </div>
 
-            <div className="flex items-center gap-5 text-[10px] text-white/40">
+            <div className="hidden items-center gap-5 text-[10px] text-white/40 lg:flex">
               <span><kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-1 font-mono text-white/65">Space</kbd> Play/Pause</span>
               <span><kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-1 font-mono text-white/65">→</kbd> Step</span>
               <span><kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-1 font-mono text-white/65">R</kbd> Reset</span>
