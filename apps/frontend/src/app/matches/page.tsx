@@ -19,6 +19,7 @@ export default function MatchesPage() {
   const { club, hydrated } = useSelectedClub();
   const fixtures = useAppStore((s) => s.fixtures);
   const currentWeek = useAppStore((s) => s.currentWeek);
+  const currentSeason = useAppStore((s) => s.currentSeason);
 
   const clubFixtures = useMemo(() => {
     if (!club) return [];
@@ -44,7 +45,7 @@ export default function MatchesPage() {
           <StaggerItem>
             <div className="section-header !mb-1">Fixtures & Results</div>
             <h1 className="font-headline text-3xl lg:text-4xl font-bold tracking-tight text-primary-c">Matches</h1>
-            <p className="text-tertiary-c text-sm mt-1">{club!.name} · Season 2026 · Week {currentWeek}</p>
+            <p className="text-tertiary-c text-sm mt-1">{club!.name} · Season {2025 + currentSeason} · Week {currentWeek}</p>
           </StaggerItem>
           <StaggerItem className="grid grid-cols-3 gap-2">
             <RecordPill label="W" value={wins} tone="success" />
@@ -101,7 +102,7 @@ export default function MatchesPage() {
                         </div>
 
                         {/* Play button */}
-                        {m.status === 'live' || m.status === 'scheduled' ? (
+                        {m.id === upcoming[0]?.id ? (
                           <Link href="/match-simulation" onClick={() => playRawClick(0.15)}>
                             <Button variant={m.status === 'live' ? 'gold' : 'secondary'} size="sm" className="shrink-0">
                               <PlayCircle className="w-3.5 h-3.5" />
